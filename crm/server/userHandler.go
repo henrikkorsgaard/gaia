@@ -2,7 +2,6 @@ package server
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 
 	"henrikkorsgaard.dk/gaia/crm/database"
@@ -27,12 +26,21 @@ func handleUserWithId(db *database.UserDatabase) http.Handler {
 				json.NewEncoder(w).Encode(user)
 			}
 
+			if id != "" && r.Method == http.MethodDelete {
+				err := db.DeleteUser(id)
+				if err != nil {
+					panic(err)
+				}
+
+				w.WriteHeader(http.StatusOK)
+				w.Write(nil)
+			}
+
 			//if method is get
 			//if method is put
 			//if method is post
 
 			//fmt.Println(id)
-			fmt.Println(r.Method)
 
 			//TODO: Set headers globally with a proxy handler
 

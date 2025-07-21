@@ -45,7 +45,9 @@ func (db *UserDatabase) GetUserById(userId string) (user User, err error) {
 	result := db.db.Find(&user, "gaia_id = ?", userId)
 	if result.Error != nil && !errors.Is(result.Error, gorm.ErrRecordNotFound) {
 		err = errors.Join(ErrDatabaseGetUser, result.Error)
+		return user, err
 	}
+
 	return user, err
 }
 
@@ -72,9 +74,11 @@ func (db *UserDatabase) BulkUpsertUsers(users []User) (rows int64, err error) {
 }
 
 func (db *UserDatabase) DeleteUser(userId string) (err error) {
-	result := db.db.Delete(&User{}, userId)
+	result := db.db.Delete(&User{}, "gaia_id = ?", userId)
 	if result.Error != nil {
 		err = errors.Join(ErrDatabaseDeleteUser, result.Error)
+		return err
 	}
-	return
+
+	return err
 }

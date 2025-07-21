@@ -1,58 +1,74 @@
 package server
 
 import (
+	"encoding/json"
+	"fmt"
 	"net/http"
+
+	"henrikkorsgaard.dk/gaia/crm/database"
 )
 
-func GetUserById(userId string) http.Handler {
+func handleUserWithId(db *database.UserDatabase) http.Handler {
 	return http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
 
+			id := r.PathValue("id")
+
+			w.Header().Set("Content-Type", "application/json; charset=utf-8")
+
+			if id != "" && r.Method == http.MethodGet {
+
+				user, err := db.GetUserById(id)
+				if err != nil {
+					panic(err)
+				}
+
+				w.WriteHeader(http.StatusOK)
+				json.NewEncoder(w).Encode(user)
+			}
+
+			//if method is get
+			//if method is put
+			//if method is post
+
+			//fmt.Println(id)
+			fmt.Println(r.Method)
+
 			//TODO: Set headers globally with a proxy handler
-			w.Header().Set("Content-Type", "text/html; charset=utf-8")
-			w.Write([]byte("We need to return json"))
+
 		},
 	)
 }
 
-func GetUsers() http.Handler {
+func handleUser(db *database.UserDatabase) http.Handler {
 	return http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
 
-			//TODO: Set headers globally with a proxy handler
-			w.Header().Set("Content-Type", "text/html; charset=utf-8")
-			w.Write([]byte("We need to return json"))
-		},
-	)
-}
+			if r.Method == http.MethodPost {
 
-func CreateUser() http.Handler {
-	return http.HandlerFunc(
-		func(w http.ResponseWriter, r *http.Request) {
+				var user database.User
+				json.NewDecoder(r.Body).Decode(&user)
 
-			//TODO: Set headers globally with a proxy handler
-			w.Header().Set("Content-Type", "text/html; charset=utf-8")
-			w.Write([]byte("We need to return json"))
-		},
-	)
-}
+				err := db.UpsertUser(user)
+				if err != nil {
+					panic(err)
+				}
+				w.WriteHeader(http.StatusCreated)
+				w.Write(nil)
+			}
 
-// TODO send a user json obj
-func UpdateUser() http.Handler {
-	return http.HandlerFunc(
-		func(w http.ResponseWriter, r *http.Request) {
+			if r.Method == http.MethodGet {
+				/*
+					user, err := db.GetUserById(id)
+					if err != nil {
+						panic(err)
+					}
+					w.WriteHeader(http.StatusCreated)
+					json.NewEncoder(w).Encode(user)
+				*/
+			}
 
-			//TODO: Set headers globally with a proxy handler
-			w.Header().Set("Content-Type", "text/html; charset=utf-8")
-			w.Write([]byte("We need to return json"))
-		},
-	)
-}
-
-// TODO send a user json obj
-func DeleteUser(userId string) http.Handler {
-	return http.HandlerFunc(
-		func(w http.ResponseWriter, r *http.Request) {
+			//users, err := db.GetUsers()
 
 			//TODO: Set headers globally with a proxy handler
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")

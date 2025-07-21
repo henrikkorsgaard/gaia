@@ -3,20 +3,35 @@ package server
 import (
 	"net/http"
 	"slices"
+
+	"henrikkorsgaard.dk/gaia/crm/database"
 )
 
+// Should be put in .env
+var originAllowlist = []string{
+	"http://127.0.0.1:8000",
+	"http://localhost:8000",
+}
+
 // Pattern adopted from https://grafana.com/blog/2024/02/09/how-i-write-http-services-in-go-after-13-years/
-func NewServer() http.Handler {
+func NewServer(db *database.UserDatabase) http.Handler {
 
-	mux := http.NewServeMux()
-	mux.Handle("/healthy", healthy())
-	//mux.Handle("/user/{id}")
-
-	var handler http.Handler = mux
+	var handler http.Handler = addRoutes(db)
 	// we want cors check first, because that is the simplest access check
 	handler = checkCORS(handler)
 
 	return handler
+}
+
+// refactored into independent route function to aid testing
+func addRoutes(db *database.UserDatabase) *http.ServeMux {
+	mux := http.NewServeMux()
+	mux.Handle("/healthy", healthy())
+	//Returns JSON
+	mux.Handle("/user/{id}", handleUserWithId(db)) //GET, PUT, POST, DELETE
+	mux.Handle("/user", handleUser(db))            //GET List
+	mux.Handle("/", handleView(db))
+	return mux
 }
 
 func healthy() http.Handler {

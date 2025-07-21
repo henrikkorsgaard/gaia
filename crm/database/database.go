@@ -16,13 +16,13 @@ var (
 )
 
 type User struct {
-	MitIdUUID string //MitIdUUID
-	GaiaId    string `gorm:"primaryKey"` //Business ID
-	Name      string //Full name
-	Address   string
-	DarId     string
-	Updated   int64 `gorm:"autoUpdateTime"`
-	Created   int64 `gorm:"autoCreateTime"`
+	MitIdUUID string `json:"mitid_uuid"`
+	GaiaId    string `gorm:"primaryKey" json:"gaia_id"` //Business ID
+	Name      string `json:"name"`
+	Address   string `json:"address"`
+	DarId     string `json:"dar_id"`
+	Updated   int64  `gorm:"autoUpdateTime" json:"updated_at"`
+	Created   int64  `gorm:"autoCreateTime" json:"created_at"`
 }
 
 type UserDatabase struct {

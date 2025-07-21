@@ -35,7 +35,7 @@ func TestGetUser(t *testing.T) {
 	defer ts.Close()
 
 	client := ts.Client()
-	r, err := client.Get(fmt.Sprintf("%v/user/%s", ts.URL, id))
+	r, err := client.Get(fmt.Sprintf("%v/users/%s", ts.URL, id))
 	is.NoErr(err)
 
 	var u2 database.User
@@ -55,7 +55,7 @@ func TestCreateUser(t *testing.T) {
 	client := ts.Client()
 
 	var data = `{"name":"Bruno Latour", "address": "Landgreven 10, 1301 København K", "dar_id": "0a3f507a-b2e6-32b8-e044-0003ba298018"}`
-	_, err := client.Post(fmt.Sprintf("%v/user", ts.URL), "application/json", strings.NewReader(data))
+	_, err := client.Post(fmt.Sprintf("%v/users", ts.URL), "application/json", strings.NewReader(data))
 	is.NoErr(err)
 
 	users, err := db.GetUsers()
@@ -85,7 +85,7 @@ func TestUpdateUser(t *testing.T) {
 	client := ts.Client()
 
 	var data = `{"gaia_id":"` + id + `", "name":"Bruno Latour", "address": "Constantin Hansens Gade 12, 1799 København V", "dar_id": "45380a0c-9ad1-4370-84d2-50fc574b2063"}`
-	req, err := http.NewRequest("PUT", fmt.Sprintf("%v/user/%s", ts.URL, id), strings.NewReader(data))
+	req, err := http.NewRequest("PUT", fmt.Sprintf("%v/users/%s", ts.URL, id), strings.NewReader(data))
 	is.NoErr(err)
 
 	r, err := client.Do(req)
@@ -116,7 +116,7 @@ func TestDeleteUser(t *testing.T) {
 	defer ts.Close()
 
 	client := ts.Client()
-	req, err := http.NewRequest("DELETE", fmt.Sprintf("%v/user/%s", ts.URL, id), nil)
+	req, err := http.NewRequest("DELETE", fmt.Sprintf("%v/users/%s", ts.URL, id), nil)
 	is.NoErr(err)
 
 	r, err := client.Do(req)
@@ -171,7 +171,7 @@ func TestGetUsers(t *testing.T) {
 	defer ts.Close()
 
 	client := ts.Client()
-	r, err := client.Get(fmt.Sprintf("%v/user", ts.URL))
+	r, err := client.Get(fmt.Sprintf("%v/users", ts.URL))
 	is.NoErr(err)
 
 	var users []database.User

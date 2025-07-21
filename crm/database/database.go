@@ -16,7 +16,7 @@ var (
 )
 
 type User struct {
-	MitIdUUID string `json:"mitid_uuid"`
+	MitIdUUID string `gorm:"mitid_uuid" json:"mitid_uuid"`
 	GaiaId    string `gorm:"primaryKey" json:"gaia_id"` //Business ID
 	Name      string `json:"name"`
 	Address   string `json:"address"`
@@ -43,6 +43,16 @@ func New(host string) *UserDatabase {
 
 func (db *UserDatabase) GetUserById(userId string) (user User, err error) {
 	result := db.db.Find(&user, "gaia_id = ?", userId)
+	if result.Error != nil && !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+		err = errors.Join(ErrDatabaseGetUser, result.Error)
+		return user, err
+	}
+
+	return user, err
+}
+
+func (db *UserDatabase) GetUserMitIDUUID(mitidUUID string) (user User, err error) {
+	result := db.db.Find(&user, "mitid_uuid = ?", mitidUUID)
 	if result.Error != nil && !errors.Is(result.Error, gorm.ErrRecordNotFound) {
 		err = errors.Join(ErrDatabaseGetUser, result.Error)
 		return user, err

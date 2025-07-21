@@ -26,6 +26,20 @@ func handleUserWithId(db *database.UserDatabase) http.Handler {
 				json.NewEncoder(w).Encode(user)
 			}
 
+			if id != "" && r.Method == http.MethodPut {
+
+				var user database.User
+				json.NewDecoder(r.Body).Decode(&user)
+
+				err := db.UpdateUserById(user)
+				if err != nil {
+					panic(err)
+				}
+
+				w.WriteHeader(http.StatusOK)
+				w.Write(nil)
+			}
+
 			if id != "" && r.Method == http.MethodDelete {
 				err := db.DeleteUser(id)
 				if err != nil {
@@ -57,7 +71,7 @@ func handleUser(db *database.UserDatabase) http.Handler {
 				var user database.User
 				json.NewDecoder(r.Body).Decode(&user)
 
-				err := db.UpsertUser(user)
+				err := db.CreateUser(user)
 				if err != nil {
 					panic(err)
 				}

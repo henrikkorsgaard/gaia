@@ -28,7 +28,7 @@ func TestGetUser(t *testing.T) {
 		Address: "Landgreven 10, 1301 København K",
 		DarId:   "0a3f507a-b2e6-32b8-e044-0003ba298018",
 	}
-	err := db.UpsertUser(u1)
+	err := db.CreateUser(u1)
 	is.NoErr(err)
 
 	ts := httptest.NewServer(addRoutes(db))
@@ -45,7 +45,7 @@ func TestGetUser(t *testing.T) {
 	is.Equal(u1.Name, u2.Name)
 }
 
-func TestPostUser(t *testing.T) {
+func TestCreateUser(t *testing.T) {
 	defer cleanup()
 	is := is.New(t)
 
@@ -63,6 +63,40 @@ func TestPostUser(t *testing.T) {
 	is.Equal("Bruno Latour", users[0].Name)
 }
 
+func TestUpdateUser(t *testing.T) {
+	defer cleanup()
+	is := is.New(t)
+
+	db := database.New(testdb)
+
+	id := uuid.New().String()
+	u1 := database.User{
+		GaiaId:  id,
+		Name:    "Bruno Latour",
+		Address: "Landgreven 10, 1301 København K",
+		DarId:   "0a3f507a-b2e6-32b8-e044-0003ba298018",
+	}
+
+	err := db.CreateUser(u1)
+	is.NoErr(err)
+
+	ts := httptest.NewServer(addRoutes(db))
+	defer ts.Close()
+	client := ts.Client()
+
+	var data = `{"gaia_id":"` + id + `", "name":"Bruno Latour", "address": "Constantin Hansens Gade 12, 1799 København V", "dar_id": "45380a0c-9ad1-4370-84d2-50fc574b2063"}`
+	req, err := http.NewRequest("PUT", fmt.Sprintf("%v/user/%s", ts.URL, id), strings.NewReader(data))
+	is.NoErr(err)
+
+	r, err := client.Do(req)
+	is.NoErr(err)
+	is.Equal(r.StatusCode, http.StatusOK)
+
+	users, err := db.GetUsers()
+	is.NoErr(err)
+	is.Equal("Constantin Hansens Gade 12, 1799 København V", users[0].Address)
+}
+
 func TestDeleteUser(t *testing.T) {
 	defer cleanup()
 	is := is.New(t)
@@ -75,7 +109,7 @@ func TestDeleteUser(t *testing.T) {
 		Address: "Landgreven 10, 1301 København K",
 		DarId:   "0a3f507a-b2e6-32b8-e044-0003ba298018",
 	}
-	err := db.UpsertUser(u1)
+	err := db.CreateUser(u1)
 	is.NoErr(err)
 
 	ts := httptest.NewServer(addRoutes(db))

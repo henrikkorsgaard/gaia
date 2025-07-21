@@ -59,12 +59,22 @@ func (db *UserDatabase) GetUsers() (users []User, err error) {
 	return users, err
 }
 
-func (db *UserDatabase) UpsertUser(user User) (err error) {
-	_, err = db.BulkUpsertUsers([]User{user})
+func (db *UserDatabase) UpdateUserById(user User) (err error) {
+	result := db.db.Save(&user)
+	if result.Error != nil {
+		err = errors.Join(ErrDatabaseDeleteUser, result.Error)
+		return err
+	}
+
 	return err
 }
 
-func (db *UserDatabase) BulkUpsertUsers(users []User) (rows int64, err error) {
+func (db *UserDatabase) CreateUser(user User) (err error) {
+	_, err = db.BulkCreateUsers([]User{user})
+	return err
+}
+
+func (db *UserDatabase) BulkCreateUsers(users []User) (rows int64, err error) {
 	result := db.db.Save(&users)
 	if result.Error != nil {
 		return rows, errors.Join(ErrDatabaseUpdateUser, result.Error)

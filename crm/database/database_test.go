@@ -64,7 +64,7 @@ func TestBulkUpsert(t *testing.T) {
 		DarId:   "0a3f507a-b2e6-32b8-e044-0003ba298018",
 	}
 
-	rows, err := db.BulkUpsertUsers([]User{u1, u2, u3, u4})
+	rows, err := db.BulkCreateUsers([]User{u1, u2, u3, u4})
 	is.NoErr(err)
 	is.Equal(rows, int64(4))
 }

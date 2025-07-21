@@ -50,13 +50,7 @@ func handleUserWithId(db *database.UserDatabase) http.Handler {
 				w.Write(nil)
 			}
 
-			//if method is get
-			//if method is put
-			//if method is post
-
-			//fmt.Println(id)
-
-			//TODO: Set headers globally with a proxy handler
+			// we need an error case here I think?
 
 		},
 	)
@@ -80,21 +74,16 @@ func handleUser(db *database.UserDatabase) http.Handler {
 			}
 
 			if r.Method == http.MethodGet {
-				/*
-					user, err := db.GetUserById(id)
-					if err != nil {
-						panic(err)
-					}
-					w.WriteHeader(http.StatusCreated)
-					json.NewEncoder(w).Encode(user)
-				*/
+
+				users, err := db.GetUsers()
+				if err != nil {
+					panic(err)
+				}
+				w.WriteHeader(http.StatusCreated)
+				json.NewEncoder(w).Encode(users)
+
 			}
 
-			//users, err := db.GetUsers()
-
-			//TODO: Set headers globally with a proxy handler
-			w.Header().Set("Content-Type", "text/html; charset=utf-8")
-			w.Write([]byte("We need to return json"))
 		},
 	)
 }

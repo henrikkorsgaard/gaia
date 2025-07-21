@@ -130,6 +130,56 @@ func TestDeleteUser(t *testing.T) {
 
 }
 
+func TestGetUsers(t *testing.T) {
+	defer cleanup()
+	is := is.New(t)
+
+	db := database.New(testdb)
+	u1 := database.User{
+		GaiaId:  uuid.New().String(),
+		Name:    "Bruno Latour",
+		Address: "Landgreven 10, 1301 København K",
+		DarId:   "0a3f507a-b2e6-32b8-e044-0003ba298018",
+	}
+
+	u2 := database.User{
+		GaiaId:  uuid.New().String(),
+		Name:    "Bruno Latour",
+		Address: "Landgreven 10, 1301 København K",
+		DarId:   "0a3f507a-b2e6-32b8-e044-0003ba298018",
+	}
+
+	u3 := database.User{
+		GaiaId:  uuid.New().String(),
+		Name:    "Bruno Latour",
+		Address: "Landgreven 10, 1301 København K",
+		DarId:   "0a3f507a-b2e6-32b8-e044-0003ba298018",
+	}
+
+	u4 := database.User{
+		GaiaId:  uuid.New().String(),
+		Name:    "Bruno Latour",
+		Address: "Landgreven 10, 1301 København K",
+		DarId:   "0a3f507a-b2e6-32b8-e044-0003ba298018",
+	}
+
+	rows, err := db.BulkCreateUsers([]database.User{u1, u2, u3, u4})
+	is.NoErr(err)
+	is.Equal(rows, int64(4))
+
+	ts := httptest.NewServer(addRoutes(db))
+	defer ts.Close()
+
+	client := ts.Client()
+	r, err := client.Get(fmt.Sprintf("%v/user", ts.URL))
+	is.NoErr(err)
+
+	var users []database.User
+	json.NewDecoder(r.Body).Decode(&users)
+
+	is.Equal(len(users), 4)
+}
+
 func cleanup() {
 	fmt.Println("Removing test database")
 	err := os.Remove(testdb)

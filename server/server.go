@@ -34,7 +34,7 @@ func healthy() http.Handler {
 	})
 }
 
-// Lets start with cookies
+// Lets start with cookies https://www.calhoun.io/securing-cookies-in-go/
 func authCheck(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("Auth hit")

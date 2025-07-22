@@ -5,7 +5,7 @@ import (
 	"log"
 	"net/http"
 
-	"henrikkorsgaard.dk/gaia/gaia/server"
+	"henrikkorsgaard.dk/gaia/app/server"
 )
 
 func main() {

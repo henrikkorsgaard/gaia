@@ -1,7 +1,10 @@
 package server
 
 import (
+	"fmt"
+	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"slices"
 	"strings"
@@ -25,6 +28,7 @@ func NewServer() http.Handler {
 
 	mux := http.NewServeMux()
 	mux.Handle("/healthy", healthy())
+	mux.Handle("/login", login())
 	mux.Handle("/authenticate", authenticate())
 	mux.Handle("/", http.FileServer(http.Dir("static")))
 
@@ -50,7 +54,42 @@ func healthy() http.Handler {
 func authenticate() http.Handler {
 	//this is the endpoint that sets what?
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		q := r.URL.Query()
+		code := q.Get("code")
+		fmt.Println(code)
+		data := url.Values{}
+		data.Add("client_id", os.Getenv("MITID_CLIENT_ID"))
+		data.Add("client_secret", os.Getenv("MITID_CLIENT_SECRET"))
+		data.Add("grant_type", "authorization_code")
+		data.Add("code", code)
+		data.Add("redirect_uri", "http://localhost:3000/authenticate")
+
+		resp, err := http.Post("https://pp.netseidbroker.dk/op/connect/token", "application/x-www-form-urlencoded", strings.NewReader(data.Encode()))
+		if err != nil {
+			fmt.Println(err)
+		}
+
+		defer resp.Body.Close()
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			fmt.Println("Error while reading the response bytes:", err)
+		}
+		fmt.Println("H " + string([]byte(body)))
+
+		http.Redirect(w, r, "/", http.StatusSeeOther)
+	})
+}
+
+func login() http.Handler {
+	//this is the endpoint that sets what?
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// we get info from MitId
+		// can we decode it here (or should we move it elsewhere?)
+		//
+
 		// Get a session. Get() always returns a session, even if empty.
+		// Should we check the header?
+		/*'
 		session, err := store.Get(r, "gaia")
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -66,8 +105,11 @@ func authenticate() http.Handler {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-
-		http.Redirect(w, r, "/", http.StatusSeeOther)
+		*/
+		// This allow us to manipulate state
+		// Test identity: Victoria43276, uuid:0e4a1734-a8f3-4c49-b09c-35405104725e
+		url := "https://pp.netseidbroker.dk/op/connect/authorize?response_type=code&client_id=" + os.Getenv("MITID_CLIENT_ID") + "&redirect_uri=http://localhost:3000/authenticate&scope=openid mitid&state=xyz123&simulation=no-ui uuid:0e4a1734-a8f3-4c49-b09c-35405104725e"
+		http.Redirect(w, r, url, http.StatusSeeOther)
 	})
 }
 
@@ -76,6 +118,9 @@ func authenticate() http.Handler {
 func authCheck(next http.Handler) http.Handler {
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Auth checker should check for token
+		// if no token redirect to login
+		//
 		session, err := store.Get(r, "gaia")
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)

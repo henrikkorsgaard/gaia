@@ -3,15 +3,18 @@ package server
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"strings"
 	"testing"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/matryer/is"
 	"henrikkorsgaard.dk/gaia/crm/database"
+	"henrikkorsgaard.dk/gaia/crm/tokens"
 )
 
 var testdb = "test.db"
@@ -180,36 +183,51 @@ func TestGetUsers(t *testing.T) {
 	is.Equal(len(users), 4)
 }
 
-func TestMatchUser(t *testing.T) {
+func TestMitIDUserMatch(t *testing.T) {
 	defer cleanup()
 	is := is.New(t)
 
 	db := database.New(testdb)
 	mitiduuid := uuid.New().String()
+	gaiaid := uuid.New().String()
 	name := "Bruno Latour"
 	u := database.User{
-		GaiaId:    uuid.New().String(), // create user should return id from DB
+		GaiaId:    gaiaid, // create user should return id from DB
 		MitIdUUID: mitiduuid,
 		Name:      name,
 		Address:   "Landgreven 10, 1301 København K",
 		DarId:     "0a3f507a-b2e6-32b8-e044-0003ba298018",
 	}
 
-	err := db.CreateUser(&u)
+	err := db.CreateUser(u)
 	is.NoErr(err)
 
 	ts := httptest.NewServer(addRoutes(db))
 	defer ts.Close()
 	client := ts.Client()
 
-	var data = fmt.Sprintf(`{"mitid_uuid":"%s", "name":"%s"`, mitiduuid, name)
-	req, err := http.NewRequest("POST", fmt.Sprintf("%v/,atch", ts.URL), strings.NewReader(data))
+	var data = fmt.Sprintf(`{ "mitid_uuid":"%s", "name":"%s" }`, mitiduuid, name)
+	req, err := http.NewRequest("POST", fmt.Sprintf("%v/match", ts.URL), strings.NewReader(data))
 	is.NoErr(err)
 
 	r, err := client.Do(req)
 	is.NoErr(err)
 	is.Equal(r.StatusCode, http.StatusOK)
-	// we should get a token in return
+	defer r.Body.Close()
+
+	body, err := io.ReadAll(r.Body)
+	is.NoErr(err)
+
+	token, err := jwt.ParseWithClaims(string(body), &tokens.UserToken{}, func(token *jwt.Token) (any, error) {
+		return []byte("tokensecret"), nil
+	}, jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}))
+	is.NoErr(err)
+
+	claims, ok := token.Claims.(*tokens.UserToken)
+	is.Equal(ok, true)
+	is.Equal(claims.Subject, gaiaid)
+	is.Equal(claims.Audience, jwt.ClaimStrings{"crm", "data", "invoice"})
+	is.Equal(claims.Scope, "crm:write data:read invoice:read")
 }
 
 func cleanup() {

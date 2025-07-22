@@ -11,6 +11,14 @@ Handles authentication with MitID
 - Handle matching between MitID identity and Gaia identity
 - Issue "access token" with aud and scope 
 
+## JTW issuer
+This could be an independent service where 
+- services are registered with scope, aud and role
+- match between mitiduuid and gaia user is made
+    - APP -> JWT -> CRM match -> JWT -> APP
+
+
+Only build if there is a point in it.
 
 
 ### DMI 

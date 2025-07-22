@@ -16,7 +16,7 @@ var (
 )
 
 type User struct {
-	MitIdUUID string `gorm:"mitid_uuid" json:"mitid_uuid"`
+	MitIdUUID string `gorm:"column:mitid_uuid" json:"mitid_uuid"`
 	GaiaId    string `gorm:"primaryKey" json:"gaia_id"` //Business ID
 	Name      string `json:"name"`
 	Address   string `json:"address"`

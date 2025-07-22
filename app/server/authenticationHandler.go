@@ -56,6 +56,14 @@ func authenticate() http.Handler {
 
 		fmt.Printf("%+v\n", user)
 
+		// what if we just have an endpoint that says match? that returns something ?
+		// Why would we want a failed match to return an access token? Because we want to keep the identity preserved right?
+		// a failed match access tokens till contains uuid + name + match
+
+		// Next: check if the user exist in CRMß
+		// Yes: redirect to / (dashboard) with access token with scope (all) and aud
+		// No: redirect to address input with access token with scope (match) and aud
+
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 	})
 }

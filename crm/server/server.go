@@ -30,6 +30,7 @@ func addRoutes(db *database.UserDatabase) *http.ServeMux {
 	//Returns JSON
 	mux.Handle("/users/{id}", handleUserWithId(db)) //GET, PUT, POST, DELETE
 	mux.Handle("/users", handleUser(db))            //GET List
+	muc.Handle("/match", handleMatch(db))
 	mux.Handle("/", handleView(db))
 	return mux
 }

@@ -180,6 +180,38 @@ func TestGetUsers(t *testing.T) {
 	is.Equal(len(users), 4)
 }
 
+func TestMatchUser(t *testing.T) {
+	defer cleanup()
+	is := is.New(t)
+
+	db := database.New(testdb)
+	mitiduuid := uuid.New().String()
+	name := "Bruno Latour"
+	u := database.User{
+		GaiaId:    uuid.New().String(), // create user should return id from DB
+		MitIdUUID: mitiduuid,
+		Name:      name,
+		Address:   "Landgreven 10, 1301 København K",
+		DarId:     "0a3f507a-b2e6-32b8-e044-0003ba298018",
+	}
+
+	err := db.CreateUser(&u)
+	is.NoErr(err)
+
+	ts := httptest.NewServer(addRoutes(db))
+	defer ts.Close()
+	client := ts.Client()
+
+	var data = fmt.Sprintf(`{"mitid_uuid":"%s", "name":"%s"`, mitiduuid, name)
+	req, err := http.NewRequest("POST", fmt.Sprintf("%v/,atch", ts.URL), strings.NewReader(data))
+	is.NoErr(err)
+
+	r, err := client.Do(req)
+	is.NoErr(err)
+	is.Equal(r.StatusCode, http.StatusOK)
+	// we should get a token in return
+}
+
 func cleanup() {
 	fmt.Println("Removing test database")
 	err := os.Remove(testdb)

@@ -54,16 +54,11 @@ func authenticate() http.Handler {
 			fmt.Println("this is something for the grand day of errorhandling")
 		}
 
-		fmt.Printf("%+v\n", user)
-
-		// what if we just have an endpoint that says match? that returns something ?
-		// Why would we want a failed match to return an access token? Because we want to keep the identity preserved right?
-		// a failed match access tokens till contains uuid + name + match
-
-		// Next: check if the user exist in CRMß
-		// Yes: redirect to / (dashboard) with access token with scope (all) and aud
-		// No: redirect to address input with access token with scope (match) and aud
-
+		//if authentication is succesful from CRM, then
+		// we 200 get a token and all is good
+		// if we get 404, then we need to redirect the user
+		// to onboarding - this can be done with a server rendered template
+		// with user info inside.
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 	})
 }
@@ -81,6 +76,13 @@ func login() http.Handler {
 
 		url := fmt.Sprintf("https://pp.netseidbroker.dk/op/connect/authorize?response_type=code&client_id=%s&redirect_uri=%s&scope=openid mitid&state=%s%s", clientId, uri, state, simulated)
 		http.Redirect(w, r, url, http.StatusSeeOther)
+	})
+}
+
+func onboarding() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+		http.Redirect(w, r, "/", http.StatusSeeOther)
 	})
 }
 

@@ -16,27 +16,17 @@ type UserToken struct {
 
 func NewUserToken(user database.User) (string, error) {
 
-	var aud []string
-	var scope string
-	if user.GaiaId != "" {
-		aud = []string{"crm", "data", "invoice"}
-		scope = "crm:write data:read invoice:read"
-	} else {
-		aud = []string{"crm"}
-		scope = "crm:match"
-	}
-
 	rc := jwt.RegisteredClaims{
 		ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
 		IssuedAt:  jwt.NewNumericDate(time.Now()),
 		NotBefore: jwt.NewNumericDate(time.Now()),
 		Issuer:    "Gaia",
 		Subject:   user.GaiaId,
-		Audience:  aud,
+		Audience:  []string{"crm", "data", "invoice"},
 	}
 
 	claims := UserToken{
-		scope, rc,
+		"crm:write data:read invoice:read", rc,
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)

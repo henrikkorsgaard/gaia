@@ -10,10 +10,14 @@ import (
 
 var (
 	ErrMatchMissingMitIdUUID = "error: missing mitid_uuid. unable to match without mitid_uuid."
-	ErrMatchMissingDarId     = "error: missing dar_id. unable to match based on address without dar_id."
 )
 
-func handleMatch(db *database.UserDatabase) http.Handler {
+/*
+	matchHandler will return a token for the user with the claims
+	OR 404 if unable to match
+*/
+
+func matchHandler(db *database.UserDatabase) http.Handler {
 	return http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
 			if r.Method == http.MethodPost {
@@ -28,29 +32,19 @@ func handleMatch(db *database.UserDatabase) http.Handler {
 				if userRequest.MitIdUUID == "" {
 					//400: Missing mitid_uuid
 					http.Error(w, ErrMatchMissingMitIdUUID, http.StatusBadRequest)
+
 					return
 				}
 
+				// Initial Mitid match
 				user, err := db.GetUserMitIDUUID(userRequest.MitIdUUID)
 				if err != nil {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
+
 					return
 				}
 
-				// Identity match requires GaiaId
-				// If not succesful with mitid_uuid, we try dar_id
-				if user.GaiaId == "" {
-
-					if userRequest.DarId == "" {
-						//400: Missing dar_id
-						http.Error(w, ErrMatchMissingDarId, http.StatusBadRequest)
-						return
-					}
-
-					/*
-						Attention: In a real system, we would try to match the user on the dar_id
-						In this demo we simply create the user based on dar_id
-					*/
+				if user.GaiaId == "" && userRequest.DarId != "" {
 					user, err = db.CreateUser(userRequest)
 					if err != nil {
 						http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -58,14 +52,24 @@ func handleMatch(db *database.UserDatabase) http.Handler {
 					}
 				}
 
-				token, err := tokens.NewUserToken(user)
-				if err != nil {
-					http.Error(w, err.Error(), http.StatusInternalServerError)
+				// Check if any match was succesful and return token
+				if user.GaiaId != "" {
+					token, err := tokens.NewUserToken(user)
+					if err != nil {
+						http.Error(w, err.Error(), http.StatusInternalServerError)
+
+						return
+					}
+
+					w.WriteHeader(http.StatusOK)
+					w.Write([]byte(token))
+
 					return
 				}
 
-				w.WriteHeader(http.StatusOK)
-				w.Write([]byte(token))
+				w.WriteHeader(http.StatusNotFound)
+				w.Write([]byte("unable to match identity"))
+
 				return
 			}
 		},

@@ -7,7 +7,7 @@ import (
 	"henrikkorsgaard.dk/gaia/crm/database"
 )
 
-func handleUserWithId(db *database.UserDatabase) http.Handler {
+func userIdHandler(db *database.UserDatabase) http.Handler {
 	return http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
 
@@ -59,7 +59,7 @@ func handleUserWithId(db *database.UserDatabase) http.Handler {
 	)
 }
 
-func handleUser(db *database.UserDatabase) http.Handler {
+func userHandler(db *database.UserDatabase) http.Handler {
 	return http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
 

@@ -7,7 +7,7 @@ import (
 )
 
 // TODO: Return CRM app view
-func handleView(db *database.UserDatabase) http.Handler {
+func viewHandler(db *database.UserDatabase) http.Handler {
 	return http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
 

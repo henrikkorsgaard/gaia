@@ -271,8 +271,36 @@ func TestDarIDUserMatch(t *testing.T) {
 	is.Equal(claims.Scope, "crm:write data:read invoice:read")
 }
 
+func TestFailedMitIDMatch(t *testing.T) {
+	defer cleanup()
+	is := is.New(t)
+
+	db := database.New(testdb)
+
+	ts := httptest.NewServer(addRoutes(db))
+	defer ts.Close()
+	client := ts.Client()
+
+	mitiduuid := uuid.New().String()
+	name := "Bruno Latour"
+
+	var data = fmt.Sprintf(`{ "mitid_uuid":"%s", "name":"%s" }`, mitiduuid, name)
+
+	req, err := http.NewRequest("POST", fmt.Sprintf("%v/match", ts.URL), strings.NewReader(data))
+	is.NoErr(err)
+
+	r, err := client.Do(req)
+	is.NoErr(err)
+	is.Equal(r.StatusCode, http.StatusNotFound)
+	defer r.Body.Close()
+
+	body, err := io.ReadAll(r.Body)
+	is.NoErr(err)
+
+	is.Equal(string(body), "unable to match identity")
+}
+
 func cleanup() {
-	fmt.Println("Removing test database")
 	err := os.Remove(testdb)
 	if err != nil {
 		panic(err)

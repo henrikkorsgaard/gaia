@@ -1,7 +1,6 @@
 package database
 
 import (
-	"fmt"
 	"os"
 	"testing"
 
@@ -96,7 +95,6 @@ func TestGetUsers(t *testing.T) {
 }
 
 func cleanup() {
-	fmt.Println("Removing test database")
 	err := os.Remove(testdb)
 	if err != nil {
 		panic(err)

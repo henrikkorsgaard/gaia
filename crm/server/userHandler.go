@@ -19,11 +19,13 @@ func handleUserWithId(db *database.UserDatabase) http.Handler {
 
 				user, err := db.GetUserById(id)
 				if err != nil {
-					panic(err)
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
 				}
 
 				w.WriteHeader(http.StatusOK)
 				json.NewEncoder(w).Encode(user)
+				return
 			}
 
 			if id != "" && r.Method == http.MethodPut {
@@ -33,11 +35,12 @@ func handleUserWithId(db *database.UserDatabase) http.Handler {
 
 				err := db.UpdateUserById(user)
 				if err != nil {
-					panic(err)
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
 				}
 
 				w.WriteHeader(http.StatusOK)
-				w.Write(nil)
+				return
 			}
 
 			if id != "" && r.Method == http.MethodDelete {
@@ -47,10 +50,10 @@ func handleUserWithId(db *database.UserDatabase) http.Handler {
 				}
 
 				w.WriteHeader(http.StatusOK)
-				w.Write(nil)
+				return
 			}
 
-			// we need an error case here I think?
+			http.Error(w, "", http.StatusMethodNotAllowed)
 
 		},
 	)
@@ -65,24 +68,29 @@ func handleUser(db *database.UserDatabase) http.Handler {
 				var user database.User
 				json.NewDecoder(r.Body).Decode(&user)
 
-				_, err := db.CreateUser(user)
+				newUser, err := db.CreateUser(user)
 				if err != nil {
-					panic(err)
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
 				}
 				w.WriteHeader(http.StatusCreated)
-				w.Write(nil)
+				json.NewEncoder(w).Encode(newUser)
+				return
 			}
 
 			if r.Method == http.MethodGet {
 
 				users, err := db.GetUsers()
 				if err != nil {
-					panic(err)
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
 				}
 				w.WriteHeader(http.StatusCreated)
 				json.NewEncoder(w).Encode(users)
-
+				return
 			}
+
+			http.Error(w, "", http.StatusMethodNotAllowed)
 
 		},
 	)

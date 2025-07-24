@@ -23,6 +23,11 @@ type mitidUser struct {
 
 var state = uuid.NewString()[:6]
 
+var (
+	ErrAuthenticationMissingCode = "error: mitid did not return code."
+	ErrAuthenticationStateError  = "error: provider returned unexpected state."
+)
+
 /*
 login() will redirect the user to MitID authentication flow
 this will redirect here with the codes needed.
@@ -34,24 +39,29 @@ func authenticate() http.Handler {
 
 		queryState := q.Get("state")
 		if queryState != state {
-			fmt.Println("Somthing is wrong - this need to go on my big day of error handling")
+			http.Error(w, ErrAuthenticationStateError, http.StatusInternalServerError)
+			return
 		}
 
 		code := q.Get("code")
 		if code == "" {
-			fmt.Println("Somthing is wrong - this need to go on my big day of error handling")
+			http.Error(w, ErrAuthenticationMissingCode, http.StatusInternalServerError)
+			return
 		}
 
 		// This can potentially fail if the code is old?
 		tokens, err := getTokens(code)
 		if err != nil {
-			fmt.Println("this is something for the grand day of errorhandling")
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+
 		}
 
 		//This can fail if the login was initiated more than 15 minutes earlier
-		user, err := getUserInfo(tokens.AccessToken)
+		mitIdUser, err := getUserInfo(tokens.AccessToken)
 		if err != nil {
-			fmt.Println("this is something for the grand day of errorhandling")
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
 		}
 
 		//if authentication is succesful from CRM, then

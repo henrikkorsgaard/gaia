@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+
+<head>
+    <script
+        src="https://cdn.dataforsyningen.dk/dawa/assets/dawa-autocomplete2/1.0.2/dawa-autocomplete2.min.js"></script>
+</head>
+
+<body>
+    <h1></h1>
+    <p>Looks like this is the first time you login to Gaia. We need your address to be able to identify your
+        subscribtion.</p>
+    <form action="/onboarding">
+        <label>Address:</label><br>
+        <input type="search" id="address">
+            <!-- Suggestions will appear here -->
+        <input type="text" id="darid" name="darid" value=""><br><br>
+        <input type="submit" value="Send">
+    </form>
+
+    <script type="text/javascript"">
+
+        let x = document.cookie;
+        var name = getCookie(" gaia_n").replaceAll('"', '')
+        document.querySelector("h1").innerHTML = `Hi ${name}`
+        
+        function getCookie(cname) {
+            let name = cname + "="; let decodedCookie = decodeURIComponent(document.cookie); let
+                ca = decodedCookie.split(';'); for (let i = 0; i < ca.length; i++) {
+                    let c = ca[i]; while (c.charAt(0) == ' ') {
+                        c = c.substring(1);
+                    } if (c.indexOf(name) == 0) { return c.substring(name.length, c.length); }
+                } return "";
+        }
+        
+        dawaAutocomplete.dawaAutocomplete(document.getElementById("address"), {
+            select:
+                function (selected) {
+                    console.log(selected)
+                    document.getElementById("address").value = selected.tekst;
+                    document.getElementById("darid").value = selected.data.id;
+                }, adgangsadresserOnly: true,
+        });
+    </script>
+
+
+</body>
+</html>

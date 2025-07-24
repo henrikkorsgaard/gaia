@@ -12,9 +12,9 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
+	"github.com/henrikkorsgaard/gaia/crm/database"
+	"github.com/henrikkorsgaard/gaia/crm/tokens"
 	"github.com/matryer/is"
-	"henrikkorsgaard.dk/gaia/crm/database"
-	"henrikkorsgaard.dk/gaia/crm/tokens"
 )
 
 var testdb = "test.db"
@@ -217,7 +217,6 @@ func TestMitIDUserMatch(t *testing.T) {
 
 	body, err := io.ReadAll(r.Body)
 	is.NoErr(err)
-
 	token, err := jwt.ParseWithClaims(string(body), &tokens.UserToken{}, func(token *jwt.Token) (any, error) {
 		return []byte("tokensecret"), nil
 	}, jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}))

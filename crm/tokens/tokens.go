@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	"henrikkorsgaard.dk/gaia/crm/database"
+	"github.com/henrikkorsgaard/gaia/crm/database"
 
 	_ "github.com/joho/godotenv/autoload"
 )

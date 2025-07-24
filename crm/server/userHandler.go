@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"henrikkorsgaard.dk/gaia/crm/database"
+	"github.com/henrikkorsgaard/gaia/crm/database"
 )
 
 func userIdHandler(db *database.UserDatabase) http.Handler {

@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"os"
 
-	"henrikkorsgaard.dk/gaia/crm/database"
-	"henrikkorsgaard.dk/gaia/crm/server"
+	"github.com/henrikkorsgaard/gaia/crm/database"
+	"github.com/henrikkorsgaard/gaia/crm/server"
 
 	_ "github.com/joho/godotenv/autoload"
 )

@@ -2,11 +2,9 @@ package server
 
 import (
 	"net/http"
-	"os"
 	"slices"
 	"strings"
 
-	"github.com/gorilla/sessions"
 	_ "github.com/joho/godotenv/autoload"
 )
 
@@ -15,9 +13,6 @@ var originAllowlist = []string{
 	"http://127.0.0.1:8000",
 	"http://localhost:8000",
 }
-
-// https://github.com/gorilla/securecookie
-var store = sessions.NewCookieStore([]byte(os.Getenv("SESSION_KEY")))
 
 // Pattern adopted from https://grafana.com/blog/2024/02/09/how-i-write-http-services-in-go-after-13-years/
 func NewServer() http.Handler {

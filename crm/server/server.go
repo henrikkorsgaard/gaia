@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"slices"
 
-	"henrikkorsgaard.dk/gaia/crm/database"
+	"github.com/henrikkorsgaard/gaia/crm/database"
 )
 
 // Should be put in .env

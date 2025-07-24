@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"henrikkorsgaard.dk/gaia/crm/database"
-	"henrikkorsgaard.dk/gaia/crm/tokens"
+	"github.com/henrikkorsgaard/gaia/crm/database"
+	"github.com/henrikkorsgaard/gaia/crm/tokens"
 )
 
 var (

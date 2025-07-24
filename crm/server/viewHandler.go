@@ -3,7 +3,7 @@ package server
 import (
 	"net/http"
 
-	"henrikkorsgaard.dk/gaia/crm/database"
+	"github.com/henrikkorsgaard/gaia/crm/database"
 )
 
 // TODO: Return CRM app view

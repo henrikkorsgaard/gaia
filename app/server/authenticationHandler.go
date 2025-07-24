@@ -3,18 +3,23 @@ package server
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"os"
 	"strings"
 
 	"github.com/google/uuid"
+	"github.com/gorilla/sessions"
 )
 
 type tokens struct {
 	IdToken     string `json:"id_token"`
 	AccessToken string `json:"access_token"`
 }
+
+// https://github.com/gorilla/securecookie
+var store = sessions.NewCookieStore([]byte(os.Getenv("SESSION_KEY")))
 
 type mitidUser struct {
 	MitIdUUID string `json:"mitid.uuid"`
@@ -63,14 +68,54 @@ func authenticate() http.Handler {
 			return
 		}
 
-		fmt.Printf("MU: %+v", mitUser)
+		token, err := matchUser(mitUser.MitIdUUID, mitUser.Name, "", "")
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 
-		//if authentication is succesful from CRM, then
-		// we 200 get a token and all is good
-		// if we get 404, then we need to redirect the user
-		// to onboarding - this can be done with a server rendered template
-		// with user info inside.
-		http.Redirect(w, r, "/", http.StatusSeeOther)
+		if token != "" {
+			session, err := store.Get(r, "gaia")
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			session.Values["token"] = token
+			err = session.Save(r, w)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			http.Redirect(w, r, "/", http.StatusSeeOther)
+		} else {
+			//http cookie for name
+			session, err := store.Get(r, "gaia")
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			session.Values["mit"] = mitUser.MitIdUUID
+			session.Values["name"] = mitUser.Name
+
+			err = session.Save(r, w)
+
+			cookie := http.Cookie{
+				Name:     "gaia_n",
+				Value:    mitUser.Name,
+				MaxAge:   3600,
+				Path:     "/",
+				HttpOnly: false,
+				Secure:   false,
+			}
+
+			http.SetCookie(w, &cookie)
+
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			http.Redirect(w, r, "/onboarding.html", http.StatusSeeOther)
+		}
 	})
 }
 
@@ -90,13 +135,6 @@ func login() http.Handler {
 	})
 }
 
-func onboarding() http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-
-		http.Redirect(w, r, "/", http.StatusSeeOther)
-	})
-}
-
 /*
 This middleware should be used to check authentication for protected endpoints
 The methodology (secure cookie vs JWT token is still not determined)
@@ -107,16 +145,17 @@ func authCheck(next http.Handler) http.Handler {
 		// Auth checker should check for token
 		// if no token redirect to login
 		//
-		session, err := store.Get(r, "gaia")
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		if session.IsNew && !strings.Contains(r.URL.Path, "/authenticate") {
-			http.Redirect(w, r, "/authenticate", http.StatusSeeOther)
-			return
-		}
+		/*
+			session, err := store.Get(r, "gaia")
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			/*
+			if session.IsNew && !strings.Contains(r.URL.Path, "/authenticate") {
+				http.Redirect(w, r, "/authenticate", http.StatusSeeOther)
+				return
+			}*/
 
 		next.ServeHTTP(w, r)
 	})
@@ -161,4 +200,24 @@ func getUserInfo(accessToken string) (user mitidUser, err error) {
 	json.NewDecoder(resp.Body).Decode(&user)
 
 	return user, err
+}
+
+func matchUser(mitidUUID, name, address, darId string) (token string, err error) {
+	var data = fmt.Sprintf(`{ "mitid_uuid":"%s", "name":"%s", "address": "%s", "dar_id": "%s" }`, mitidUUID, name, address, darId)
+	resp, err := http.Post("http://localhost:3010/match", "application/json", strings.NewReader(data))
+	if err != nil {
+		return token, err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return token, err
+	}
+
+	if resp.StatusCode == http.StatusOK {
+		token = string(body)
+	}
+
+	return token, err
 }

@@ -1,4 +1,4 @@
-module github.com/henrikkorsgaard/app
+module github.com/henrikkorsgaard/gaia/app
 
 go 1.24.3
 

@@ -3,6 +3,7 @@ package database
 import (
 	"errors"
 
+	"github.com/google/uuid"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -12,6 +13,7 @@ var (
 	ErrDatabaseConnection = errors.New("error connecting to the database")
 	ErrDatabaseUpdateUser = errors.New("error updating user in database")
 	ErrDatabaseGetUser    = errors.New("error get user(s) in database")
+	ErrDatabaseCreateUser = errors.New("error creating user(s) in database")
 	ErrDatabaseDeleteUser = errors.New("error deleting user in database")
 )
 
@@ -79,18 +81,26 @@ func (db *UserDatabase) UpdateUserById(user User) (err error) {
 	return err
 }
 
-func (db *UserDatabase) CreateUser(user User) (err error) {
-	_, err = db.BulkCreateUsers([]User{user})
-	return err
+func (db *UserDatabase) CreateUser(user User) (User, error) {
+	_, users, err := db.BulkCreateUsers([]User{user})
+	if err != nil {
+		return User{}, err
+	}
+	return users[0], nil
 }
 
-func (db *UserDatabase) BulkCreateUsers(users []User) (rows int64, err error) {
+func (db *UserDatabase) BulkCreateUsers(users []User) (int64, []User, error) {
+	for i := 0; i < len(users); i++ {
+		if users[i].GaiaId == "" {
+			users[i].GaiaId = uuid.New().String()
+		}
+	}
 	result := db.db.Save(&users)
 	if result.Error != nil {
-		return rows, errors.Join(ErrDatabaseUpdateUser, result.Error)
+		return result.RowsAffected, users, errors.Join(ErrDatabaseCreateUser, result.Error)
 	}
-	rows = int64(result.RowsAffected)
-	return rows, err
+
+	return result.RowsAffected, users, nil
 }
 
 func (db *UserDatabase) DeleteUser(userId string) (err error) {

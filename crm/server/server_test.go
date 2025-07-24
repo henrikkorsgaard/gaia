@@ -26,12 +26,12 @@ func TestGetUser(t *testing.T) {
 	db := database.New(testdb)
 	id := uuid.New().String()
 	u1 := database.User{
-		GaiaId:  id,
+		GaiaId:  id, // This allow us to take control of the user creation
 		Name:    "Bruno Latour",
 		Address: "Landgreven 10, 1301 København K",
 		DarId:   "0a3f507a-b2e6-32b8-e044-0003ba298018",
 	}
-	err := db.CreateUser(u1)
+	_, err := db.CreateUser(u1)
 	is.NoErr(err)
 
 	ts := httptest.NewServer(addRoutes(db))
@@ -80,7 +80,7 @@ func TestUpdateUser(t *testing.T) {
 		DarId:   "0a3f507a-b2e6-32b8-e044-0003ba298018",
 	}
 
-	err := db.CreateUser(u1)
+	_, err := db.CreateUser(u1)
 	is.NoErr(err)
 
 	ts := httptest.NewServer(addRoutes(db))
@@ -112,7 +112,7 @@ func TestDeleteUser(t *testing.T) {
 		Address: "Landgreven 10, 1301 København K",
 		DarId:   "0a3f507a-b2e6-32b8-e044-0003ba298018",
 	}
-	err := db.CreateUser(u1)
+	_, err := db.CreateUser(u1)
 	is.NoErr(err)
 
 	ts := httptest.NewServer(addRoutes(db))
@@ -166,7 +166,7 @@ func TestGetUsers(t *testing.T) {
 		DarId:   "0a3f507a-b2e6-32b8-e044-0003ba298018",
 	}
 
-	rows, err := db.BulkCreateUsers([]database.User{u1, u2, u3, u4})
+	rows, _, err := db.BulkCreateUsers([]database.User{u1, u2, u3, u4})
 	is.NoErr(err)
 	is.Equal(rows, int64(4))
 
@@ -199,7 +199,7 @@ func TestMitIDUserMatch(t *testing.T) {
 		DarId:     "0a3f507a-b2e6-32b8-e044-0003ba298018",
 	}
 
-	err := db.CreateUser(u)
+	_, err := db.CreateUser(u)
 	is.NoErr(err)
 
 	ts := httptest.NewServer(addRoutes(db))

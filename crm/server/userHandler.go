@@ -65,7 +65,7 @@ func handleUser(db *database.UserDatabase) http.Handler {
 				var user database.User
 				json.NewDecoder(r.Body).Decode(&user)
 
-				err := db.CreateUser(user)
+				_, err := db.CreateUser(user)
 				if err != nil {
 					panic(err)
 				}

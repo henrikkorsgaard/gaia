@@ -25,10 +25,9 @@ func handleMatch(db *database.UserDatabase) http.Handler {
 					- To match an existing user
 					- OR to create a new user with address
 				*/
-
 				if userRequest.MitIdUUID == "" {
 					//400: Missing mitid_uuid
-					http.Error(w, ErrMatchMissingMitIdUUID, http.StatusBadGateway)
+					http.Error(w, ErrMatchMissingMitIdUUID, http.StatusBadRequest)
 					return
 				}
 

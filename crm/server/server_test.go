@@ -230,6 +230,47 @@ func TestMitIDUserMatch(t *testing.T) {
 	is.Equal(claims.Scope, "crm:write data:read invoice:read")
 }
 
+// This will not match a user, but create a user
+func TestDarIDUserMatch(t *testing.T) {
+	defer cleanup()
+	is := is.New(t)
+
+	db := database.New(testdb)
+
+	ts := httptest.NewServer(addRoutes(db))
+	defer ts.Close()
+	client := ts.Client()
+
+	mitiduuid := uuid.New().String()
+	name := "Bruno Latour"
+	darid := "0a3f507a-b2e6-32b8-e044-0003ba298018"
+	address := "Landgreven 10, 1301 København K"
+
+	var data = fmt.Sprintf(`{ "mitid_uuid":"%s", "name":"%s", "dar_id":"%s", "address":"%s" }`, mitiduuid, name, darid, address)
+
+	req, err := http.NewRequest("POST", fmt.Sprintf("%v/match", ts.URL), strings.NewReader(data))
+	is.NoErr(err)
+
+	r, err := client.Do(req)
+	is.NoErr(err)
+	is.Equal(r.StatusCode, http.StatusOK)
+	defer r.Body.Close()
+
+	body, err := io.ReadAll(r.Body)
+	is.NoErr(err)
+
+	token, err := jwt.ParseWithClaims(string(body), &tokens.UserToken{}, func(token *jwt.Token) (any, error) {
+		return []byte("tokensecret"), nil
+	}, jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}))
+	is.NoErr(err)
+
+	claims, ok := token.Claims.(*tokens.UserToken)
+	is.Equal(ok, true)
+	is.Equal(claims.Subject != "", true)
+	is.Equal(claims.Audience, jwt.ClaimStrings{"crm", "data", "invoice"})
+	is.Equal(claims.Scope, "crm:write data:read invoice:read")
+}
+
 func cleanup() {
 	fmt.Println("Removing test database")
 	err := os.Remove(testdb)

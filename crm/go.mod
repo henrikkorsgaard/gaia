@@ -1,4 +1,4 @@
-module henrikkorsgaard.dk/gaia/crm
+module github.com/henrikkorsgaard/gaia/crm
 
 go 1.24.3
 

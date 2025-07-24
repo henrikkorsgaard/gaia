@@ -54,15 +54,16 @@ func authenticate() http.Handler {
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
-
 		}
 
 		//This can fail if the login was initiated more than 15 minutes earlier
-		mitIdUser, err := getUserInfo(tokens.AccessToken)
+		mitUser, err := getUserInfo(tokens.AccessToken)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
+
+		fmt.Printf("MU: %+v", mitUser)
 
 		//if authentication is succesful from CRM, then
 		// we 200 get a token and all is good

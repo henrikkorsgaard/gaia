@@ -40,8 +40,8 @@ this will redirect here with the codes needed.
 func authenticate() http.Handler {
 	//this is the endpoint that sets what?
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		q := r.URL.Query()
 
+		q := r.URL.Query()
 		queryState := q.Get("state")
 		if queryState != state {
 			http.Error(w, ErrAuthenticationStateError, http.StatusInternalServerError)
@@ -67,6 +67,71 @@ func authenticate() http.Handler {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
+
+		token, err := matchUser(mitUser.MitIdUUID, mitUser.Name, "", "")
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		if token != "" {
+			session, err := store.Get(r, "gaia")
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			session.Values["token"] = token
+			err = session.Save(r, w)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			http.Redirect(w, r, "/", http.StatusSeeOther)
+		} else {
+			//http cookie for name
+			session, err := store.Get(r, "gaia")
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			session.Values["mit"] = mitUser.MitIdUUID
+			session.Values["name"] = mitUser.Name
+
+			err = session.Save(r, w)
+
+			cookie := http.Cookie{
+				Name:     "gaia_n",
+				Value:    mitUser.Name,
+				MaxAge:   3600,
+				Path:     "/",
+				HttpOnly: false,
+				Secure:   false,
+			}
+
+			http.SetCookie(w, &cookie)
+
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			http.Redirect(w, r, "/onboarding.html", http.StatusSeeOther)
+		}
+	})
+}
+
+func onboarding() http.Handler {
+	//this is the endpoint that sets what?
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+		//If cookie not present -> error
+
+		//If form data is not completed -> error
+
+		//Get token
+
+		//if succesful -> set cookie and redirect
+
+		//if unsucesful -> redirect to error page
 
 		token, err := matchUser(mitUser.MitIdUUID, mitUser.Name, "", "")
 		if err != nil {

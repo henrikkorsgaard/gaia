@@ -1,11 +1,13 @@
 package server
 
+
+package server
+
 import (
 	"net/http"
 	"slices"
-	"strings"
 
-	_ "github.com/joho/godotenv/autoload"
+	"github.com/henrikkorsgaard/gaia/crm/database"
 )
 
 // Should be put in .env
@@ -15,25 +17,28 @@ var originAllowlist = []string{
 }
 
 // Pattern adopted from https://grafana.com/blog/2024/02/09/how-i-write-http-services-in-go-after-13-years/
-func NewServer() http.Handler {
+func NewServer(db *database.UserDatabase) http.Handler {
 
-	mux := http.NewServeMux()
-	mux.Handle("/healthy", healthy())
-	mux.Handle("/", http.FileServer(http.Dir("static")))
-
-	//Authentication handlers
-	mux.Handle("/login", login())
-	mux.Handle("/authenticate", authenticate())
-	mux.Handle("/onboarding", onboarding())
-
-	var handler http.Handler = mux
-	handler = ignoreFavicon(handler)
+	var handler http.Handler = addRoutes(db)
 	// we want cors check first, because that is the simplest access check
 	handler = checkCORS(handler)
-	// authCheck will check the cookie and then redirect to /authenticate if no cookie is found
-	handler = authCheck(handler)
 
 	return handler
+}
+
+// refactored into independent route function to aid testing
+func addRoutes(db *database.UserDatabase) *http.ServeMux {
+	mux := http.NewServeMux()
+	mux.Handle("/healthy", healthy())
+	
+	// Handles full authentication
+	mux.Handle("/account/authenticate", authenticate())
+	mux.Handle("/account/login", login())
+	mux.Handle("/account/onboarding", onboarding())
+
+	/* Then we need something that handles all incoming */ 
+
+	return mux
 }
 
 func healthy() http.Handler {
@@ -53,15 +58,5 @@ func checkCORS(next http.Handler) http.Handler {
 		}
 		w.Header().Add("Vary", "Origin")
 		next.ServeHTTP(w, r)
-	})
-}
-
-func ignoreFavicon(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if strings.Contains(r.URL.Path, "favicon.ico") {
-			http.NotFoundHandler()
-		} else {
-			next.ServeHTTP(w, r)
-		}
 	})
 }

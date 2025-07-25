@@ -5,7 +5,6 @@ import (
 	"net/http"
 
 	"github.com/henrikkorsgaard/gaia/crm/database"
-	"github.com/henrikkorsgaard/gaia/crm/tokens"
 )
 
 var (
@@ -54,15 +53,9 @@ func matchHandler(db *database.UserDatabase) http.Handler {
 
 				// Check if any match was succesful and return token
 				if user.GaiaId != "" {
-					token, err := tokens.NewUserToken(user)
-					if err != nil {
-						http.Error(w, err.Error(), http.StatusInternalServerError)
-
-						return
-					}
 
 					w.WriteHeader(http.StatusOK)
-					w.Write([]byte(token))
+					json.NewEncoder(w).Encode(user)
 
 					return
 				}

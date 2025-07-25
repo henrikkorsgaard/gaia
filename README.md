@@ -11,7 +11,16 @@ Handles authentication with MitID
 - Handle matching between MitID identity and Gaia identity
 - Issue "access token" with aud and scope 
 
-## JTW issuer
+## Auth
+Responsibility:
+
+Offer an authentication service.
+- Provide authentication from external identity provider MitId
+- Provide onboarding 
+- Provide reverse proxy for additional calls
+- Use this as a logging point
+
+
 This could be an independent service where 
 - services are registered with scope, aud and role
 - match between mitiduuid and gaia user is made

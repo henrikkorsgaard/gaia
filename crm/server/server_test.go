@@ -3,17 +3,14 @@ package server
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"strings"
 	"testing"
 
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/henrikkorsgaard/gaia/crm/database"
-	"github.com/henrikkorsgaard/gaia/crm/tokens"
 	"github.com/matryer/is"
 )
 
@@ -213,20 +210,11 @@ func TestMitIDUserMatch(t *testing.T) {
 	r, err := client.Do(req)
 	is.NoErr(err)
 	is.Equal(r.StatusCode, http.StatusOK)
-	defer r.Body.Close()
 
-	body, err := io.ReadAll(r.Body)
-	is.NoErr(err)
-	token, err := jwt.ParseWithClaims(string(body), &tokens.UserToken{}, func(token *jwt.Token) (any, error) {
-		return []byte("tokensecret"), nil
-	}, jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}))
-	is.NoErr(err)
+	var user database.User
+	json.NewDecoder(r.Body).Decode(&user)
+	is.Equal(u.GaiaId, user.GaiaId)
 
-	claims, ok := token.Claims.(*tokens.UserToken)
-	is.Equal(ok, true)
-	is.Equal(claims.Subject, gaiaid)
-	is.Equal(claims.Audience, jwt.ClaimStrings{"crm", "data", "invoice"})
-	is.Equal(claims.Scope, "crm:write data:read invoice:read")
 }
 
 // This will not match a user, but create a user
@@ -253,21 +241,10 @@ func TestDarIDUserMatch(t *testing.T) {
 	r, err := client.Do(req)
 	is.NoErr(err)
 	is.Equal(r.StatusCode, http.StatusOK)
-	defer r.Body.Close()
-
-	body, err := io.ReadAll(r.Body)
-	is.NoErr(err)
-
-	token, err := jwt.ParseWithClaims(string(body), &tokens.UserToken{}, func(token *jwt.Token) (any, error) {
-		return []byte("tokensecret"), nil
-	}, jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}))
-	is.NoErr(err)
-
-	claims, ok := token.Claims.(*tokens.UserToken)
-	is.Equal(ok, true)
-	is.Equal(claims.Subject != "", true)
-	is.Equal(claims.Audience, jwt.ClaimStrings{"crm", "data", "invoice"})
-	is.Equal(claims.Scope, "crm:write data:read invoice:read")
+	var user database.User
+	json.NewDecoder(r.Body).Decode(&user)
+	is.Equal(user.Name, name)
+	is.Equal(user.GaiaId != "", true)
 }
 
 func TestFailedMitIDMatch(t *testing.T) {
@@ -291,12 +268,6 @@ func TestFailedMitIDMatch(t *testing.T) {
 	r, err := client.Do(req)
 	is.NoErr(err)
 	is.Equal(r.StatusCode, http.StatusNotFound)
-	defer r.Body.Close()
-
-	body, err := io.ReadAll(r.Body)
-	is.NoErr(err)
-
-	is.Equal(string(body), "unable to match identity")
 }
 
 func cleanup() {

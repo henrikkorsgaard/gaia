@@ -12,8 +12,7 @@ var (
 )
 
 /*
-	matchHandler will return a token for the user with the claims
-	OR 404 if unable to match
+	matchHandler will return a user with an id OR 404 if unable to match
 */
 
 func matchHandler(db *database.UserDatabase) http.Handler {
@@ -31,7 +30,6 @@ func matchHandler(db *database.UserDatabase) http.Handler {
 				if userRequest.MitIdUUID == "" {
 					//400: Missing mitid_uuid
 					http.Error(w, ErrMatchMissingMitIdUUID, http.StatusBadRequest)
-
 					return
 				}
 
@@ -39,7 +37,6 @@ func matchHandler(db *database.UserDatabase) http.Handler {
 				user, err := db.GetUserMitIDUUID(userRequest.MitIdUUID)
 				if err != nil {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
-
 					return
 				}
 
@@ -51,12 +48,10 @@ func matchHandler(db *database.UserDatabase) http.Handler {
 					}
 				}
 
-				// Check if any match was succesful and return token
+				// Check if any match was succesful and return user
 				if user.GaiaId != "" {
-
 					w.WriteHeader(http.StatusOK)
 					json.NewEncoder(w).Encode(user)
-
 					return
 				}
 

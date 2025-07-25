@@ -21,17 +21,11 @@ func NewServer() http.Handler {
 	mux.Handle("/healthy", healthy())
 	mux.Handle("/", http.FileServer(http.Dir("static")))
 
-	//Authentication handlers
-	mux.Handle("/login", login())
-	mux.Handle("/authenticate", authenticate())
-	mux.Handle("/onboarding", onboarding())
-
 	var handler http.Handler = mux
 	handler = ignoreFavicon(handler)
 	// we want cors check first, because that is the simplest access check
+	// likely moved to the auth gateway
 	handler = checkCORS(handler)
-	// authCheck will check the cookie and then redirect to /authenticate if no cookie is found
-	handler = authCheck(handler)
 
 	return handler
 }

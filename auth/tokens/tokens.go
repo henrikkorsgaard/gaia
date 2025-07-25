@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/henrikkorsgaard/gaia/crm/database"
 
 	_ "github.com/joho/godotenv/autoload"
 )
@@ -14,14 +13,14 @@ type UserToken struct {
 	jwt.RegisteredClaims
 }
 
-func NewUserToken(user database.User) (string, error) {
+func NewUserToken(userId string) (string, error) {
 
 	rc := jwt.RegisteredClaims{
 		ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
 		IssuedAt:  jwt.NewNumericDate(time.Now()),
 		NotBefore: jwt.NewNumericDate(time.Now()),
 		Issuer:    "Gaia",
-		Subject:   user.GaiaId,
+		Subject:   userId,
 		Audience:  []string{"crm", "data", "invoice"},
 	}
 
@@ -31,6 +30,7 @@ func NewUserToken(user database.User) (string, error) {
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 
+	//TODO: Handle in config
 	secret := []byte("tokensecret")
 	return token.SignedString(secret)
 }

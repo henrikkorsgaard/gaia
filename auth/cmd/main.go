@@ -20,6 +20,7 @@ func main() {
 		ENVIRONMENT:         os.Getenv("ENVIRONMENT"),
 		TOKEN_SIGN_KEY:      os.Getenv("TOKEN_SIGN_KEY"),
 		SESSION_KEY:         os.Getenv("SESSION_KEY"),
+		FRONTEND_SERVER:     os.Getenv("FRONTEND_SERVER"),
 	}
 
 	log.Fatal(http.ListenAndServe(":3020", server.NewServer(config)))

@@ -3,6 +3,7 @@ package server
 import (
 	"encoding/gob"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -14,6 +15,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/gorilla/sessions"
+	app "github.com/henrikkorsgaard/gaia/app/server"
 	"github.com/henrikkorsgaard/gaia/auth/tokens"
 	"github.com/henrikkorsgaard/gaia/crm/database"
 	"github.com/henrikkorsgaard/gaia/crm/server"
@@ -109,6 +111,40 @@ func TestOnboardingIntegration(t *testing.T) {
 	is.Equal(claims.Scope, "crm:write data:read invoice:read")
 }
 
+func TestProxyIntegrationIndex(t *testing.T) {
+
+	is := is.New(t)
+
+	l, err := net.Listen("tcp", "localhost:3020")
+	is.NoErr(err)
+
+	config := getServerConfig()
+
+	prxy := httptest.NewUnstartedServer(NewServer(config))
+	prxy.Listener.Close()
+	prxy.Listener = l
+	prxy.Start()
+	defer prxy.Close()
+
+	fl, err := net.Listen("tcp", "localhost:3000")
+	is.NoErr(err)
+
+	frontend := httptest.NewUnstartedServer(app.NewServer())
+	frontend.Listener.Close()
+	frontend.Listener = fl
+	frontend.Start()
+	defer frontend.Close()
+
+	urrl := fmt.Sprintf("%v/", frontend.URL)
+	fmt.Println(urrl)
+	r, err := http.Get(urrl)
+	is.NoErr(err)
+	body, err := io.ReadAll(r.Body)
+	is.NoErr(err)
+	fmt.Println(string(body))
+
+}
+
 func getServerConfig() Config {
 	return Config{
 		MITID_CLIENT_ID:     "0a775a87-878c-4b83-abe3-ee29c720c3e7",
@@ -116,6 +152,7 @@ func getServerConfig() Config {
 		ENVIRONMENT:         "dev",
 		TOKEN_SIGN_KEY:      "secrettokenkey",
 		SESSION_KEY:         "secretsessionkey",
+		FRONTEND_SERVER:     "http://localhost:3000",
 	}
 }
 

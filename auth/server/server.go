@@ -1,7 +1,9 @@
 package server
 
 import (
+	"log"
 	"net/http"
+	"net/url"
 	"slices"
 
 	"github.com/gorilla/sessions"
@@ -19,6 +21,7 @@ type Config struct {
 	ENVIRONMENT         string
 	TOKEN_SIGN_KEY      string
 	SESSION_KEY         string
+	FRONTEND_SERVER     string
 }
 
 // Pattern adopted from https://grafana.com/blog/2024/02/09/how-i-write-http-services-in-go-after-13-years/
@@ -40,6 +43,13 @@ func addRoutes(store *sessions.CookieStore, config Config) *http.ServeMux {
 	mux.Handle("/account/authenticate", authenticate(store, config))
 	mux.Handle("/account/login", login(config))
 	mux.Handle("/account/onboarding", onboarding(store, config))
+
+	originServer, err := url.Parse(config.FRONTEND_SERVER)
+
+	if err != nil {
+		log.Fatal("invalid origin server URL")
+	}
+	mux.Handle("/", proxyHandler(store, originServer))
 
 	/* Then we need something that handles all incoming */
 

@@ -13,10 +13,18 @@ var originAllowlist = []string{
 	"http://localhost:8000",
 }
 
-// Pattern adopted from https://grafana.com/blog/2024/02/09/how-i-write-http-services-in-go-after-13-years/
-func NewServer(store *sessions.CookieStore) http.Handler {
+type Config struct {
+	MITID_CLIENT_ID     string
+	MITID_CLIENT_SECRET string
+	ENVIRONMENT         string
+	TOKEN_SIGN_KEY      string
+	SESSION_KEY         string
+}
 
-	var handler http.Handler = addRoutes(store)
+// Pattern adopted from https://grafana.com/blog/2024/02/09/how-i-write-http-services-in-go-after-13-years/
+func NewServer(config Config) http.Handler {
+	store := sessions.NewCookieStore([]byte(config.SESSION_KEY))
+	var handler http.Handler = addRoutes(store, config)
 	// we want cors check first, because that is the simplest access check
 	handler = checkCORS(handler)
 
@@ -24,14 +32,14 @@ func NewServer(store *sessions.CookieStore) http.Handler {
 }
 
 // refactored into independent route function to aid testing
-func addRoutes(store *sessions.CookieStore) *http.ServeMux {
+func addRoutes(store *sessions.CookieStore, config Config) *http.ServeMux {
 	mux := http.NewServeMux()
 	mux.Handle("/healthy", healthy())
 
 	// Handles full authentication
-	mux.Handle("/account/authenticate", authenticate(store))
-	mux.Handle("/account/login", login())
-	mux.Handle("/account/onboarding", onboarding(store))
+	mux.Handle("/account/authenticate", authenticate(store, config))
+	mux.Handle("/account/login", login(config))
+	mux.Handle("/account/onboarding", onboarding(store, config))
 
 	/* Then we need something that handles all incoming */
 

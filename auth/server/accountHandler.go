@@ -1,13 +1,13 @@
 package server
 
 import (
+	"encoding/gob"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
-	"os"
 	"strings"
 
 	"github.com/google/uuid"
@@ -26,24 +26,26 @@ type mitidUser struct {
 	Name      string `json:"mitid.identity_name"`
 }
 
-var state = uuid.NewString()[:6]
+var state = uuid.NewString()[:6] //TODO: Cycle this over time?
 
 var (
-	ErrAuthenticationMissingCode         = errors.New("error: mitid did not return code.")
-	ErrAuthenticationStateError          = errors.New("error: provider returned unexpected state.")
-	ErrAuthenticationIdentityNotFound    = errors.New("error: crm could not match identity.")
-	ErrAuthenticationIdentityServiceFail = errors.New("error: crm returned error.")
-	ErrAuthenticationOnboardingSession   = errors.New("error: onbaording sessions data incomplete.")
+	ErrAuthenticationMissingCode         = errors.New("error: mitid did not return code")
+	ErrAuthenticationStateError          = errors.New("error: provider returned unexpected state")
+	ErrAuthenticationIdentityNotFound    = errors.New("error: crm could not match identity")
+	ErrAuthenticationIdentityServiceFail = errors.New("error: crm returned error")
+	ErrAuthenticationOnboardingSession   = errors.New("error: onbaording sessions data incomplete")
 )
 
 /*
 login() will redirect the user to MitID authentication flow
 this will redirect here with the codes needed.
 */
-func authenticate(store *sessions.CookieStore) http.Handler {
+func authenticate(store *sessions.CookieStore, config Config) http.Handler {
 	//this is the endpoint that sets what?
+
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
+		gob.Register(mitidUser{})
 		q := r.URL.Query()
 		queryState := q.Get("state")
 		if queryState != state {
@@ -58,7 +60,8 @@ func authenticate(store *sessions.CookieStore) http.Handler {
 		}
 
 		// This can potentially fail if the code is old?
-		mtokens, err := getTokens(code)
+		mtokens, err := getTokens(code, config)
+
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -80,7 +83,7 @@ func authenticate(store *sessions.CookieStore) http.Handler {
 		}
 
 		if user.GaiaId != "" {
-			token, err := tokens.NewUserToken(user.GaiaId)
+			token, err := tokens.NewUserToken(user.GaiaId, config.TOKEN_SIGN_KEY)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
@@ -91,6 +94,7 @@ func authenticate(store *sessions.CookieStore) http.Handler {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
+
 			session.Values["token"] = token
 			err = session.Save(r, w)
 			if err != nil {
@@ -98,8 +102,10 @@ func authenticate(store *sessions.CookieStore) http.Handler {
 				return
 			}
 			//TODO: Handle redirect targets in config
-			http.Redirect(w, r, "/gaia/dashboard.html", http.StatusFound)
+			http.Redirect(w, r, "/gaia/dashboard.html", http.StatusOK)
+
 		} else {
+
 			session, err := store.Get(r, "gaia")
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -125,12 +131,12 @@ func authenticate(store *sessions.CookieStore) http.Handler {
 			http.SetCookie(w, &cookie)
 
 			//TODO: Handle this from a config perspective.
-			http.Redirect(w, r, "/onboarding.html", http.StatusTemporaryRedirect)
+			http.Redirect(w, r, "/onboarding.html", http.StatusFound)
 		}
 	})
 }
 
-func onboarding(store *sessions.CookieStore) http.Handler {
+func onboarding(store *sessions.CookieStore, config Config) http.Handler {
 
 	//this is the endpoint that sets what?
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -163,7 +169,7 @@ func onboarding(store *sessions.CookieStore) http.Handler {
 				return
 			}
 
-			token, err := tokens.NewUserToken(user.GaiaId)
+			token, err := tokens.NewUserToken(user.GaiaId, config.TOKEN_SIGN_KEY)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
@@ -182,19 +188,25 @@ func onboarding(store *sessions.CookieStore) http.Handler {
 	})
 }
 
-func login() http.Handler {
+func login(config Config) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
-		//TODO: manage host in config
-		uri := "http://localhost:3020/authenticate"
-		clientId := os.Getenv("MITID_CLIENT_ID")
-		simulated := "" // we use this to auto sign in when doing development.
-		//TODO handle dev environment better
-		if os.Getenv("ENVIRONMENT") == "dev" {
-			simulated = "&simulation=no-ui uuid:0e4a1734-a8f3-4c49-b09c-35405104725e"
+		params := url.Values{}
+		params.Add("response_type", "code")
+		params.Add("client_id", config.MITID_CLIENT_ID)
+		params.Add("redirect_uri", "http://localhost:3020/account/authenticate")
+		params.Add("scope", "openid mitid")
+		params.Add("state", state)
+
+		if config.ENVIRONMENT == "dev" {
+			q := r.URL.Query()
+			if q.Get("mitid") != "" {
+				params.Add("simulation", "no-ui uuid:"+q.Get("mitid")) //0e4a1734-a8f3-4c49-b09c-35405104725e
+
+			}
 		}
 
-		url := fmt.Sprintf("https://pp.netseidbroker.dk/op/connect/authorize?response_type=code&client_id=%s&redirect_uri=%s&scope=openid mitid&state=%s%s", clientId, uri, state, simulated)
+		url := "https://pp.netseidbroker.dk/op/connect/authorize?" + params.Encode()
 		http.Redirect(w, r, url, http.StatusFound)
 	})
 }
@@ -224,15 +236,15 @@ func authCheck(next http.Handler) http.Handler {
 	})
 }
 
-func getTokens(code string) (mtokens mitidTokens, err error) {
-
+func getTokens(code string, config Config) (mtokens mitidTokens, err error) {
+	fmt.Println("æl.djas")
 	// Now we go on to exchaning the code for access and id tokens
 	data := url.Values{}
-	data.Add("client_id", os.Getenv("MITID_CLIENT_ID"))
-	data.Add("client_secret", os.Getenv("MITID_CLIENT_SECRET"))
+	data.Add("client_id", config.MITID_CLIENT_ID)
+	data.Add("client_secret", config.MITID_CLIENT_SECRET)
 	data.Add("grant_type", "authorization_code")
 	data.Add("code", code)
-	data.Add("redirect_uri", "http://localhost:3000/authenticate")
+	data.Add("redirect_uri", "http://localhost:3020/account/authenticate")
 
 	resp, err := http.Post("https://pp.netseidbroker.dk/op/connect/token", "application/x-www-form-urlencoded", strings.NewReader(data.Encode()))
 	if err != nil {

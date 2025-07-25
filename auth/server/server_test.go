@@ -23,14 +23,12 @@ import (
 var testdb = "test.db"
 
 // This is closer to an integration test, but it hits all aspects.
-func TestOnboarding(t *testing.T) {
+func TestOnboardingIntegration(t *testing.T) {
 	defer cleanup()
 	is := is.New(t)
 
 	db := database.New(testdb)
-	store := sessions.NewCookieStore([]byte("Test secrets"))
 	gob.Register(mitidUser{})
-
 	u1 := database.User{
 		Name:    "Bruno Latour",
 		Address: "Landgreven 10, 1301 København K",
@@ -48,7 +46,10 @@ func TestOnboarding(t *testing.T) {
 	crm.Start()
 	defer crm.Close()
 
-	ts := httptest.NewServer(addRoutes(store))
+	config := getServerConfig()
+
+	store := sessions.NewCookieStore([]byte(config.SESSION_KEY))
+	ts := httptest.NewServer(addRoutes(store, config))
 	defer ts.Close()
 
 	form := url.Values{}
@@ -96,7 +97,7 @@ func TestOnboarding(t *testing.T) {
 
 	tokenString := sess.Values["token"].(string)
 	token, err := jwt.ParseWithClaims(tokenString, &tokens.UserToken{}, func(token *jwt.Token) (any, error) {
-		return []byte("tokensecret"), nil
+		return []byte(config.TOKEN_SIGN_KEY), nil
 
 	}, jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}))
 
@@ -106,6 +107,16 @@ func TestOnboarding(t *testing.T) {
 	is.Equal(ok, true)
 	is.Equal(claims.Audience, jwt.ClaimStrings{"crm", "data", "invoice"})
 	is.Equal(claims.Scope, "crm:write data:read invoice:read")
+}
+
+func getServerConfig() Config {
+	return Config{
+		MITID_CLIENT_ID:     "0a775a87-878c-4b83-abe3-ee29c720c3e7",
+		MITID_CLIENT_SECRET: "rnlguc7CM/wmGSti4KCgCkWBQnfslYr0lMDZeIFsCJweROTROy2ajEigEaPQFl76Py6AVWnhYofl/0oiSAgdtg==", //from Signaturgruppen pp env
+		ENVIRONMENT:         "dev",
+		TOKEN_SIGN_KEY:      "secrettokenkey",
+		SESSION_KEY:         "secretsessionkey",
+	}
 }
 
 func cleanup() {

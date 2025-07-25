@@ -13,7 +13,7 @@ type UserToken struct {
 	jwt.RegisteredClaims
 }
 
-func NewUserToken(userId string) (string, error) {
+func NewUserToken(userId string, secret string) (string, error) {
 
 	rc := jwt.RegisteredClaims{
 		ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
@@ -30,7 +30,5 @@ func NewUserToken(userId string) (string, error) {
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 
-	//TODO: Handle in config
-	secret := []byte("tokensecret")
-	return token.SignedString(secret)
+	return token.SignedString([]byte(secret))
 }

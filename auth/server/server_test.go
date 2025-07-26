@@ -129,7 +129,7 @@ func TestProxyIntegrationIndex(t *testing.T) {
 	fl, err := net.Listen("tcp", "localhost:3000")
 	is.NoErr(err)
 
-	frontend := httptest.NewUnstartedServer(app.NewServer())
+	frontend := httptest.NewUnstartedServer(app.NewServer("../../app/static"))
 	frontend.Listener.Close()
 	frontend.Listener = fl
 	frontend.Start()
@@ -141,8 +141,7 @@ func TestProxyIntegrationIndex(t *testing.T) {
 	is.NoErr(err)
 	body, err := io.ReadAll(r.Body)
 	is.NoErr(err)
-	fmt.Println(string(body))
-
+	is.Equal(strings.Contains(string(body), "<h1>Hello World</h1>"), true)
 }
 
 func getServerConfig() Config {

@@ -5,31 +5,30 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"os"
-	"path"
-	"runtime"
+	"strings"
 	"testing"
 
 	"github.com/matryer/is"
 )
 
-// This function changes the directory for where the test is run
-// This helps with the static file server issue
-// See: https://stackoverflow.com/a/60258660
-func init() {
-	_, filename, _, _ := runtime.Caller(0)
-	// The ".." may change depending on you folder structure
-	dir := path.Join(path.Dir(filename), "..")
-	err := os.Chdir(dir)
-	if err != nil {
-		panic(err)
-	}
+// How to test panic: https://stackoverflow.com/a/62028796
+func TestStaticFolderPanic(t *testing.T) {
+
+	is := is.New(t)
+
+	defer func() {
+		_ = recover()
+	}()
+
+	NewServer("path/to/nowhere")
+
+	is.Fail()
 }
 
 func TestProxyIntegrationIndex(t *testing.T) {
 
 	is := is.New(t)
-	app := httptest.NewServer(NewServer())
+	app := httptest.NewServer(NewServer("../static"))
 	defer app.Close()
 	u := fmt.Sprintf("%v/", app.URL)
 	fmt.Println(u)
@@ -37,6 +36,5 @@ func TestProxyIntegrationIndex(t *testing.T) {
 	is.NoErr(err)
 	body, err := io.ReadAll(r.Body)
 	is.NoErr(err)
-	fmt.Println(string(body))
-
+	is.Equal(strings.Contains(string(body), "<h1>Hello World</h1>"), true)
 }

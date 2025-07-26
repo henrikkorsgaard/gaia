@@ -1,8 +1,10 @@
 package server
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
+	"os"
 	"slices"
 	"strings"
 	"time"
@@ -21,10 +23,14 @@ var originAllowlist = []string{
 }
 
 // TODO: Add filepath for static folder to make this testable
-func NewServer() http.Handler {
+func NewServer(staticFolderPath string) http.Handler {
+
+	if _, err := os.Stat(staticFolderPath); os.IsNotExist(err) {
+		panic(errors.New("static file folder does not exist. check if you run from project root with the correct path to static"))
+	}
 
 	mux := http.NewServeMux()
-	mux.Handle("/", http.FileServer(http.Dir("../static")))
+	mux.Handle("/", http.FileServer(http.Dir(staticFolderPath)))
 	mux.Handle("/healthy", healthy())
 
 	var handler http.Handler = mux

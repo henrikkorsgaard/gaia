@@ -3,7 +3,6 @@ package server
 import (
 	"encoding/gob"
 	"fmt"
-	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -36,7 +35,7 @@ func TestCookieAuthCheck(t *testing.T) {
 	}
 
 	config := getServerConfig()
-	config.FRONTEND_SERVER = source.URL
+	config.ORIGIN_SERVER = source.URL
 	store := sessions.NewCookieStore([]byte(config.SESSION_KEY))
 
 	authServer := httptest.NewServer(addRoutes(store, config))
@@ -69,6 +68,7 @@ func TestIndexWithCookie(t *testing.T) {
 	is := is.New(t)
 
 	source := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Println(r.Host)
 		w.WriteHeader(http.StatusOK)
 		fmt.Fprintln(w, "Hello world")
 	}))
@@ -79,7 +79,7 @@ func TestIndexWithCookie(t *testing.T) {
 	}
 
 	config := getServerConfig()
-	config.FRONTEND_SERVER = source.URL
+	config.ORIGIN_SERVER = source.URL
 	store := sessions.NewCookieStore([]byte(config.SESSION_KEY))
 
 	authServer := httptest.NewServer(addRoutes(store, config))
@@ -195,7 +195,7 @@ func TestProxyIntegrationIndex(t *testing.T) {
 	defer source.Close()
 
 	config := getServerConfig()
-	config.FRONTEND_SERVER = source.URL
+	config.ORIGIN_SERVER = source.URL
 	proxy := httptest.NewServer(NewServer(config))
 	defer proxy.Close()
 
@@ -220,26 +220,21 @@ func TestOnboardingIntegration(t *testing.T) {
 	_, err := db.CreateUser(u1)
 	is.NoErr(err)
 
-	l, err := net.Listen("tcp", "127.0.0.1:3010")
-	is.NoErr(err)
-
-	crm := httptest.NewUnstartedServer(server.NewServer(db))
-	crm.Listener.Close()
-	crm.Listener = l
-	crm.Start()
+	crm := httptest.NewServer(server.NewServer(db))
 	defer crm.Close()
 
 	config := getServerConfig()
+	config.CRM_SERVER = crm.URL
 
 	store := sessions.NewCookieStore([]byte(config.SESSION_KEY))
-	ts := httptest.NewServer(addRoutes(store, config))
-	defer ts.Close()
+	authServer := httptest.NewServer(addRoutes(store, config))
+	defer authServer.Close()
 
 	form := url.Values{}
 	form.Add("address", u1.Address)
 	form.Add("darid", u1.DarId)
 
-	req, err := http.NewRequest("POST", fmt.Sprintf("%v/account/onboarding", ts.URL), strings.NewReader(form.Encode()))
+	req, err := http.NewRequest("POST", fmt.Sprintf("%v/account/onboarding", authServer.URL), strings.NewReader(form.Encode()))
 	is.NoErr(err)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded; param=value")
 
@@ -268,11 +263,11 @@ func TestOnboardingIntegration(t *testing.T) {
 
 	req.AddCookie(&cookie)
 
-	client := ts.Client()
+	client := authServer.Client()
 	resp, err := client.Do(req)
 	is.NoErr(err)
 	c := resp.Cookies()
-	req, err = http.NewRequest("GET", fmt.Sprintf("%v/account/onboarding", ts.URL), nil)
+	req, err = http.NewRequest("GET", fmt.Sprintf("%v/account/onboarding", authServer.URL), nil)
 	is.NoErr(err)
 	req.AddCookie(c[0])
 	sess, err := store.Get(req, "gaia")
@@ -299,7 +294,6 @@ func getServerConfig() Config {
 		ENVIRONMENT:         "dev",
 		TOKEN_SIGN_KEY:      "secrettokenkey",
 		SESSION_KEY:         "secretsessionkey",
-		FRONTEND_SERVER:     "http://localhost:3000",
 	}
 }
 

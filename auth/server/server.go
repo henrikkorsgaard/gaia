@@ -16,12 +16,21 @@ var originAllowlist = []string{
 }
 
 type Config struct {
-	MITID_CLIENT_ID     string
-	MITID_CLIENT_SECRET string
-	ENVIRONMENT         string
-	TOKEN_SIGN_KEY      string
-	SESSION_KEY         string
-	FRONTEND_SERVER     string
+	ENVIRONMENT string `env:"ENVIRONMENT,required"`
+	//Mitid Broker
+	MITID_CLIENT_ID     string `env:"MITID_CLIENT_ID,required"`
+	MITID_CLIENT_SECRET string `env:"MITID_CLIENT_SECRET,required"`
+	MITID_BROKER_HOST   string `env:"MITID_BROKER_HOST,required"`
+	//Keys
+	TOKEN_SIGN_KEY string `env:"TOKEN_SIGN_KEY,required"`
+	SESSION_KEY    string `env:"SESSION_KEY,required"`
+	//Hosts
+	ORIGIN_SERVER string `env:"ORIGIN_SERVER,required"`
+	CRM_SERVER    string `env:"CRM_SERVER,required"`
+	//Redirects
+	POST_LOGIN_REDIRECT        string `env:"POST_LOGIN_REDIRECT"`
+	IDENTITY_ERROR_REDIRECT    string `env:"IDENTITY_ERROR_REDIRECT"`
+	AUTH_SERVER_ERROR_REDIRECT string `env:"AUTH_SERVER_ERROR_REDIRECT"`
 }
 
 func NewServer(config Config) http.Handler {
@@ -43,7 +52,7 @@ func addRoutes(store *sessions.CookieStore, config Config) *http.ServeMux {
 	mux.Handle("/account/login", login(config))
 	mux.Handle("/account/onboarding", onboarding(store, config))
 
-	originServer, err := url.Parse(config.FRONTEND_SERVER)
+	originServer, err := url.Parse(config.ORIGIN_SERVER)
 
 	if err != nil {
 		log.Fatal("invalid origin server URL")

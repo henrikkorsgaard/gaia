@@ -74,7 +74,7 @@ func authenticate(store *sessions.CookieStore, config Config) http.Handler {
 			return
 		}
 
-		user, err := matchUser(mitUser.MitIdUUID, mitUser.Name, "", "")
+		user, err := matchUser(config.CRM_SERVER, mitUser.MitIdUUID, mitUser.Name, "", "")
 		//We handle errors here that are not associated with 404 identity match
 		//This returns any other error
 		if err != nil && !errors.Is(err, ErrAuthenticationIdentityNotFound) {
@@ -156,7 +156,7 @@ func onboarding(store *sessions.CookieStore, config Config) http.Handler {
 				return
 			}
 
-			user, err = matchUser(user.MitIdUUID, user.Name, user.Address, user.DarId)
+			user, err = matchUser(config.CRM_SERVER, user.MitIdUUID, user.Name, user.Address, user.DarId)
 			if err != nil {
 				clearOnboardingSessionData(w, r, session)
 				http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -211,31 +211,6 @@ func login(config Config) http.Handler {
 	})
 }
 
-/*
-This is the proxy middleware for authentication checks.
-*/
-func authCheck(next http.Handler) http.Handler {
-
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Auth checker should check for token
-		// if no token redirect to login
-		//
-		/*
-			session, err := store.Get(r, "gaia")
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-			/*
-			if session.IsNew && !strings.Contains(r.URL.Path, "/authenticate") {
-				http.Redirect(w, r, "/authenticate", http.StatusSeeOther)
-				return
-			}*/
-
-		next.ServeHTTP(w, r)
-	})
-}
-
 func getTokens(code string, config Config) (mtokens mitidTokens, err error) {
 	fmt.Println("æl.djas")
 	// Now we go on to exchaning the code for access and id tokens
@@ -277,10 +252,10 @@ func getUserInfo(accessToken string) (user mitidUser, err error) {
 	return user, err
 }
 
-func matchUser(mitidUUID, name, address, darId string) (user database.User, err error) {
+func matchUser(host string, mitidUUID, name, address, darId string) (user database.User, err error) {
 	var data = fmt.Sprintf(`{ "mitid_uuid":"%s", "name":"%s", "address": "%s", "dar_id": "%s" }`, mitidUUID, name, address, darId)
 	//TODO: Manage CRM host in config
-	resp, err := http.Post("http://localhost:3010/match", "application/json", strings.NewReader(data))
+	resp, err := http.Post(fmt.Sprintf("%v/match", host), "application/json", strings.NewReader(data))
 	if err != nil {
 		return user, err
 	}

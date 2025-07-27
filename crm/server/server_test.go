@@ -102,9 +102,9 @@ func TestDeleteUser(t *testing.T) {
 	is := is.New(t)
 
 	db := database.New(testdb)
-	id := uuid.New().String()
+
 	u1 := database.User{
-		GaiaId:  id,
+		GaiaId:  uuid.New().String(),
 		Name:    "Bruno Latour",
 		Address: "Landgreven 10, 1301 København K",
 		DarId:   "0a3f507a-b2e6-32b8-e044-0003ba298018",
@@ -116,7 +116,7 @@ func TestDeleteUser(t *testing.T) {
 	defer ts.Close()
 
 	client := ts.Client()
-	req, err := http.NewRequest("DELETE", fmt.Sprintf("%v/users/%s", ts.URL, id), nil)
+	req, err := http.NewRequest("DELETE", fmt.Sprintf("%v/users/%s", ts.URL, u1.GaiaId), nil)
 	is.NoErr(err)
 
 	r, err := client.Do(req)
@@ -124,7 +124,7 @@ func TestDeleteUser(t *testing.T) {
 
 	is.Equal(r.StatusCode, http.StatusOK)
 
-	user, err := db.GetUserById(id)
+	user, err := db.GetUserById(u1.GaiaId)
 	is.NoErr(err)
 	is.Equal(user, database.User{})
 
@@ -185,13 +185,11 @@ func TestMitIDUserMatch(t *testing.T) {
 	is := is.New(t)
 
 	db := database.New(testdb)
-	mitiduuid := uuid.New().String()
-	gaiaid := uuid.New().String()
-	name := "Bruno Latour"
+
 	u := database.User{
-		GaiaId:    gaiaid, // create user should return id from DB
-		MitIdUUID: mitiduuid,
-		Name:      name,
+		GaiaId:    uuid.New().String(), // create user should return id from DB
+		MitIdUUID: uuid.New().String(),
+		Name:      "Bruno Latour",
 		Address:   "Landgreven 10, 1301 København K",
 		DarId:     "0a3f507a-b2e6-32b8-e044-0003ba298018",
 	}
@@ -203,7 +201,7 @@ func TestMitIDUserMatch(t *testing.T) {
 	defer ts.Close()
 	client := ts.Client()
 
-	var data = fmt.Sprintf(`{ "mitid_uuid":"%s", "name":"%s" }`, mitiduuid, name)
+	var data = fmt.Sprintf(`{ "mitid_uuid":"%s", "name":"%s" }`, u.MitIdUUID, u.Name)
 	req, err := http.NewRequest("POST", fmt.Sprintf("%v/match", ts.URL), strings.NewReader(data))
 	is.NoErr(err)
 

@@ -3,7 +3,6 @@ package server
 import (
 	"encoding/gob"
 	"fmt"
-	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -15,7 +14,6 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/gorilla/sessions"
-	app "github.com/henrikkorsgaard/gaia/app/server"
 	"github.com/henrikkorsgaard/gaia/auth/tokens"
 	"github.com/henrikkorsgaard/gaia/crm/database"
 	"github.com/henrikkorsgaard/gaia/crm/server"
@@ -23,6 +21,189 @@ import (
 )
 
 var testdb = "test.db"
+
+func TestCookieAuthCheck(t *testing.T) {
+	is := is.New(t)
+
+	source := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprintln(w, "Hello world")
+	}))
+
+	defer source.Close()
+	u := database.User{
+		GaiaId: uuid.New().String(),
+	}
+
+	config := getServerConfig()
+	config.FRONTEND_SERVER = source.URL
+	store := sessions.NewCookieStore([]byte(config.SESSION_KEY))
+
+	authServer := httptest.NewServer(addRoutes(store, config))
+	defer authServer.Close()
+
+	token, err := tokens.NewUserToken(u.GaiaId, config.TOKEN_SIGN_KEY)
+	is.NoErr(err)
+
+	req, err := http.NewRequest("GET", fmt.Sprintf("%v/secret/page.html", authServer.URL), nil)
+	is.NoErr(err)
+
+	session, err := store.Get(req, "gaia")
+	is.NoErr(err)
+
+	session.Values["token"] = token
+
+	recorder := httptest.NewRecorder()
+	err = session.Save(req, recorder)
+	is.NoErr(err)
+
+	req.AddCookie(recorder.Result().Cookies()[0])
+
+	client := authServer.Client()
+	resp, err := client.Do(req)
+	is.NoErr(err)
+	is.Equal(resp.StatusCode, http.StatusOK)
+}
+
+func TestIndexWithCookie(t *testing.T) {
+	is := is.New(t)
+
+	source := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprintln(w, "Hello world")
+	}))
+	defer source.Close()
+
+	u := database.User{
+		GaiaId: uuid.New().String(),
+	}
+
+	config := getServerConfig()
+	config.FRONTEND_SERVER = source.URL
+	store := sessions.NewCookieStore([]byte(config.SESSION_KEY))
+
+	authServer := httptest.NewServer(addRoutes(store, config))
+	defer authServer.Close()
+
+	token, err := tokens.NewUserToken(u.GaiaId, config.TOKEN_SIGN_KEY)
+	is.NoErr(err)
+
+	req, err := http.NewRequest("GET", fmt.Sprintf("%v/index.html", authServer.URL), nil)
+	is.NoErr(err)
+
+	session, err := store.Get(req, "gaia")
+	is.NoErr(err)
+
+	session.Values["token"] = token
+
+	recorder := httptest.NewRecorder()
+	err = session.Save(req, recorder)
+	is.NoErr(err)
+
+	req.AddCookie(recorder.Result().Cookies()[0])
+
+	client := authServer.Client()
+	resp, err := client.Do(req)
+	is.NoErr(err)
+	is.Equal(resp.StatusCode, http.StatusOK)
+}
+
+func TesMissingCookieFail(t *testing.T) {
+	is := is.New(t)
+
+	config := getServerConfig()
+	store := sessions.NewCookieStore([]byte(config.SESSION_KEY))
+
+	authServer := httptest.NewServer(addRoutes(store, config))
+	defer authServer.Close()
+
+	req, err := http.NewRequest("GET", fmt.Sprintf("%v/secret/page.html", authServer.URL), nil)
+	is.NoErr(err)
+
+	client := authServer.Client()
+	resp, err := client.Do(req)
+	is.NoErr(err)
+	is.Equal(resp.StatusCode, http.StatusUnauthorized)
+}
+
+func TestMissingTokenFail(t *testing.T) {
+	is := is.New(t)
+
+	config := getServerConfig()
+	store := sessions.NewCookieStore([]byte(config.SESSION_KEY))
+
+	authServer := httptest.NewServer(addRoutes(store, config))
+	defer authServer.Close()
+
+	req, err := http.NewRequest("GET", fmt.Sprintf("%v/secret/page.html", authServer.URL), nil)
+	is.NoErr(err)
+
+	session, err := store.Get(req, "gaia")
+	is.NoErr(err)
+
+	session.Values["key"] = "somehting_else"
+
+	recorder := httptest.NewRecorder()
+	err = session.Save(req, recorder)
+	is.NoErr(err)
+
+	req.AddCookie(recorder.Result().Cookies()[0])
+
+	client := authServer.Client()
+	resp, err := client.Do(req)
+	is.NoErr(err)
+	is.Equal(resp.StatusCode, http.StatusUnauthorized)
+}
+
+func TestInvalidTokenFail(t *testing.T) {
+	is := is.New(t)
+
+	config := getServerConfig()
+	store := sessions.NewCookieStore([]byte(config.SESSION_KEY))
+
+	authServer := httptest.NewServer(addRoutes(store, config))
+	defer authServer.Close()
+
+	req, err := http.NewRequest("GET", fmt.Sprintf("%v/secret/page.html", authServer.URL), nil)
+	is.NoErr(err)
+
+	session, err := store.Get(req, "gaia")
+	is.NoErr(err)
+
+	session.Values["token"] = "invalid token" //This token is malformed and will trigger parse error
+
+	recorder := httptest.NewRecorder()
+	err = session.Save(req, recorder)
+	is.NoErr(err)
+
+	req.AddCookie(recorder.Result().Cookies()[0])
+
+	client := authServer.Client()
+	resp, err := client.Do(req)
+	is.NoErr(err)
+	is.Equal(resp.StatusCode, http.StatusInternalServerError)
+}
+
+func TestProxyIntegrationIndex(t *testing.T) {
+
+	is := is.New(t)
+
+	source := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprintln(w, "Hello world")
+	}))
+	defer source.Close()
+
+	config := getServerConfig()
+	config.FRONTEND_SERVER = source.URL
+	proxy := httptest.NewServer(NewServer(config))
+	defer proxy.Close()
+
+	r, err := http.Get(fmt.Sprintf("%v/", proxy.URL))
+	is.NoErr(err)
+	is.NoErr(err)
+	is.Equal(r.StatusCode, http.StatusOK)
+}
 
 // This is closer to an integration test, but it hits all aspects.
 func TestOnboardingIntegration(t *testing.T) {
@@ -109,39 +290,6 @@ func TestOnboardingIntegration(t *testing.T) {
 	is.Equal(ok, true)
 	is.Equal(claims.Audience, jwt.ClaimStrings{"crm", "data", "invoice"})
 	is.Equal(claims.Scope, "crm:write data:read invoice:read")
-}
-
-func TestProxyIntegrationIndex(t *testing.T) {
-
-	is := is.New(t)
-
-	l, err := net.Listen("tcp", "localhost:3020")
-	is.NoErr(err)
-
-	config := getServerConfig()
-
-	prxy := httptest.NewUnstartedServer(NewServer(config))
-	prxy.Listener.Close()
-	prxy.Listener = l
-	prxy.Start()
-	defer prxy.Close()
-
-	fl, err := net.Listen("tcp", "localhost:3000")
-	is.NoErr(err)
-
-	frontend := httptest.NewUnstartedServer(app.NewServer("../../app/static"))
-	frontend.Listener.Close()
-	frontend.Listener = fl
-	frontend.Start()
-	defer frontend.Close()
-
-	urrl := fmt.Sprintf("%v/", frontend.URL)
-	fmt.Println(urrl)
-	r, err := http.Get(urrl)
-	is.NoErr(err)
-	body, err := io.ReadAll(r.Body)
-	is.NoErr(err)
-	is.Equal(strings.Contains(string(body), "<h1>Hello World</h1>"), true)
 }
 
 func getServerConfig() Config {

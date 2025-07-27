@@ -24,7 +24,6 @@ type Config struct {
 	FRONTEND_SERVER     string
 }
 
-// Pattern adopted from https://grafana.com/blog/2024/02/09/how-i-write-http-services-in-go-after-13-years/
 func NewServer(config Config) http.Handler {
 	store := sessions.NewCookieStore([]byte(config.SESSION_KEY))
 	var handler http.Handler = addRoutes(store, config)
@@ -49,9 +48,7 @@ func addRoutes(store *sessions.CookieStore, config Config) *http.ServeMux {
 	if err != nil {
 		log.Fatal("invalid origin server URL")
 	}
-	mux.Handle("/", proxyHandler(store, originServer))
-
-	/* Then we need something that handles all incoming */
+	mux.Handle("/", proxyHandler(store, originServer, config))
 
 	return mux
 }

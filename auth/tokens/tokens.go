@@ -32,3 +32,18 @@ func NewUserToken(userId string, secret string) (string, error) {
 
 	return token.SignedString([]byte(secret))
 }
+
+func ValidateToken(tokenString string, secret string) (bool, error) {
+
+	//we just want to test if we can parse the token with the server secret.
+	//TODO: Validate time
+	//Note: Claims should be validate elsewhere
+	_, err := jwt.Parse(tokenString, func(token *jwt.Token) (any, error) {
+		return []byte(secret), nil
+	}, jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}))
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
+}

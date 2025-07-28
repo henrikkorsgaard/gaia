@@ -68,7 +68,6 @@ func TestIndexWithCookie(t *testing.T) {
 	is := is.New(t)
 
 	source := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Println(r.Host)
 		w.WriteHeader(http.StatusOK)
 		fmt.Fprintln(w, "Hello world")
 	}))

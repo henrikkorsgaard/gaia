@@ -12,10 +12,6 @@ func main() {
 
 	err := godotenv.Load()
 	if err != nil {
-		// TODO: Create config if not existing
-		/*
-			if errors.Is(err, fs.ErrNotExist) {
-			}*/
 		panic(fmt.Sprintf("unable to load .env file: %e", err))
 	}
 

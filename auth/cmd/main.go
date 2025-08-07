@@ -27,5 +27,6 @@ func main() {
 		panic(fmt.Sprintf("unable to parse ennvironment variables: %e", err))
 	}
 	//TODO:Port should come from config as well
+	fmt.Println("Running auth server on port 3020")
 	log.Fatal(http.ListenAndServe(":3020", server.NewServer(config)))
 }

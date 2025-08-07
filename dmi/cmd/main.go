@@ -25,5 +25,7 @@ func main() {
 		panic(fmt.Sprintf("unable to parse ennvironment variables: %e", err))
 	}
 
-	fmt.Println(config.API_KEY)
+	s := dmi.New(config)
+	s.GetLightningData()
+
 }

@@ -199,20 +199,21 @@ func login(config Config) http.Handler {
 		params.Add("state", state)
 
 		if config.ENVIRONMENT == "dev" {
+			fmt.Println("running simulated login")
 			q := r.URL.Query()
+			fmt.Println()
 			if q.Get("mitid") != "" {
 				params.Add("simulation", "no-ui uuid:"+q.Get("mitid")) //0e4a1734-a8f3-4c49-b09c-35405104725e
-
 			}
 		}
 
 		url := "https://pp.netseidbroker.dk/op/connect/authorize?" + params.Encode()
+		fmt.Println(url)
 		http.Redirect(w, r, url, http.StatusFound)
 	})
 }
 
 func getTokens(code string, config Config) (mtokens mitidTokens, err error) {
-	fmt.Println("æl.djas")
 	// Now we go on to exchaning the code for access and id tokens
 	data := url.Values{}
 	data.Add("client_id", config.MITID_CLIENT_ID)
@@ -255,6 +256,7 @@ func getUserInfo(accessToken string) (user mitidUser, err error) {
 func matchUser(host string, mitidUUID, name, address, darId string) (user database.User, err error) {
 	var data = fmt.Sprintf(`{ "mitid_uuid":"%s", "name":"%s", "address": "%s", "dar_id": "%s" }`, mitidUUID, name, address, darId)
 	//TODO: Manage CRM host in config
+	fmt.Println(data)
 	resp, err := http.Post(fmt.Sprintf("%v/match", host), "application/json", strings.NewReader(data))
 	if err != nil {
 		return user, err
